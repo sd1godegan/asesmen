@@ -1262,16 +1262,17 @@ async generateKartu() {
       return;
     }
 
-    // Kertas F4 (215.9mm x 330.2mm) dalam point
+    // ═══════════════════════════════════════════
+    // Kertas F4 (215.9 mm × 330.2 mm) dalam point
+    // ═══════════════════════════════════════════
     const PAGE_W = 612;
     const PAGE_H = 935;
     const COLS = 2;
-    const ROWS_PP = isSiswa ? 5 : 4;   // siswa 5 baris, guru/admin 4 baris
-    const MRG = 18;                    // margin dalam pt (≈ 6.35mm)
-    const TOLERANSI = 6;              // ruang ekstra agar tidak terpotong
+    const ROWS_PP = isSiswa ? 5 : 4;    // 5 baris → 10 kartu untuk siswa
+    const MRG = 18;                     // margin dalam pt
 
-    // Tinggi kartu: (tinggi halaman - 2*margin - toleransi) / jumlah baris
-    const CARD_H = Math.floor((PAGE_H - 2 * MRG - TOLERANSI) / ROWS_PP);
+    // [PERBAIKAN UTAMA] Tinggi kartu dikurangi 12 pt agar 5 baris muat longgar
+    const CARD_H = Math.floor((PAGE_H - 2 * MRG) / ROWS_PP) - 12;
     const CARD_W = Math.floor((PAGE_W - 2 * MRG) / COLS);
 
     const HDR_H = Math.min(52, Math.max(38, Math.floor(CARD_H * 0.30)));
@@ -1398,36 +1399,17 @@ async generateKartu() {
           body: pageRows
         },
         layout: {
-          hLineWidth: function(i, node) {
-            return (i === 0 || i === node.table.body.length) ? 1.5 : 0.5;
-          },
-          vLineWidth: function(i) {
-            return (i === 0 || i === COLS) ? 1.5 : 0.5;
-          },
-          hLineColor: function(i, node) {
-            return (i === 0 || i === node.table.body.length) ? '#2d4d38' : '#bdd4c4';
-          },
-          vLineColor: function(i) {
-            return (i === 0 || i === COLS) ? '#2d4d38' : '#bdd4c4';
-          },
-          hLineStyle: function(i, node) {
-            return (i > 0 && i < node.table.body.length)
-              ? { dash: { length: 5, space: 4 } } : null;
-          },
-          vLineStyle: function(i) {
-            return (i > 0 && i < COLS)
-              ? { dash: { length: 5, space: 4 } } : null;
-          },
-          paddingLeft: () => 0,
-          paddingRight: () => 0,
-          paddingTop: () => 0,
-          paddingBottom: () => 0
+          hLineWidth: function(i, node) { return (i === 0 || i === node.table.body.length) ? 1.5 : 0.5; },
+          vLineWidth: function(i) { return (i === 0 || i === COLS) ? 1.5 : 0.5; },
+          hLineColor: function(i, node) { return (i === 0 || i === node.table.body.length) ? '#2d4d38' : '#bdd4c4'; },
+          vLineColor: function(i) { return (i === 0 || i === COLS) ? '#2d4d38' : '#bdd4c4'; },
+          hLineStyle: function(i, node) { return (i > 0 && i < node.table.body.length) ? { dash: { length: 5, space: 4 } } : null; },
+          vLineStyle: function(i) { return (i > 0 && i < COLS) ? { dash: { length: 5, space: 4 } } : null; },
+          paddingLeft: () => 0, paddingRight: () => 0, paddingTop: () => 0, paddingBottom: () => 0
         }
       };
 
-      if (p > 0) {
-        pageTable.pageBreak = 'before';
-      }
+      if (p > 0) pageTable.pageBreak = 'before';
       pages.push(pageTable);
     }
 
