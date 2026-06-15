@@ -1160,262 +1160,285 @@ const Admin = {
   simpanKonfig(kunci) { const val = document.getElementById(`conf_${kunci}`)?.value; API.call('updateKonfigurasi', { kunci, nilaiPerubahan:val }).then(r => { if(r) UI.toast(`${kunci} berhasil disimpan.`,'success'); }); },
   gantiTahun() { UI.prompt('Ganti Tahun Ajaran', [ { label:'Tahun Ajaran Baru', placeholder:'Contoh: 2026/2027' } ], vals => { if (!vals[0].match(/^\d{4}\/\d{4}$/)) { UI.toast('Format: TTTT/TTTT (mis. 2026/2027)','warning'); return; } UI.confirm('Konfirmasi Pergantian Tahun Ajaran', `Data akan diarsipkan dan progres siswa direset. Lanjutkan ke tahun ${vals[0]}?`, () => { API.call('gantiTahunAjaran', { tahunBaru:vals[0] }).then(r => { if(r) { UI.toast('Tahun ajaran berhasil diganti.','success'); Router.go('konfigurasi'); }}); }, { confirmLabel:'Ganti Tahun', danger:true }); }); },
 
-  async cetakKartu() {
-    const main = document.getElementById('main-panel'); main.innerHTML = UI.loaderHTML();
-    const kelasList = await API.call('getDaftarKelas') || [];
+async cetakKartu() {
+    const main = document.getElementById('main-panel');
+    main.innerHTML = UI.loaderHTML();
+
+    const kelas = await API.call('getDaftarKelas');
+    const kelasList = kelas || [];
+
+    const semuaSiswaOpt = '<option value="siswa::SEMUA">Semua Siswa (Semua Kelas)</option>';
+    const tanpaKelasOpt = '<option value="siswa::TANPA_KELAS">Siswa Baru (Belum Punya Kelas)</option>';
     const kelasOpts = kelasList.map(k => `<option value="siswa::${k}">${k}</option>`).join('');
-    main.innerHTML = `<div class="page-header"><h1>Cetak Kartu Login</h1><p>Generate PDF kartu login untuk siswa, guru, maupun admin.</p></div><div class="card"><div style="display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;"><div style="flex:1;min-width:200px;"><label class="form-label">Pilih Kelompok</label><select id="sel-kartu-target"><optgroup label="Siswa per Kelas">${kelasOpts}</optgroup><optgroup label="Staf"><option value="guru::Guru">Semua Guru</option><option value="admin::Admin">Semua Admin</option></optgroup></select></div><button class="btn btn-primary" onclick="Admin.generateKartu()">Generate &amp; Buka PDF</button></div><div style="margin-top:14px;padding:11px 14px;background:var(--ink-50);border-radius:var(--radius);font-size:12.5px;color:var(--ink-400);line-height:1.7;"><strong style="color:var(--ink-700);">Layout otomatis per peran:</strong><br>Siswa → 2 kolom × 4 baris = <strong>8 kartu/hal</strong> &nbsp;·&nbsp; Guru &amp; Admin → 2 kolom × 3 baris = <strong>6 kartu/hal</strong></div></div>`;
-  },
+    const guruOpt   = '<option value="guru::Guru">Semua Guru</option>';
+    const adminOpt  = '<option value="admin::Admin">Semua Admin</option>';
+
+    main.innerHTML = `
+      <div class="page-header">
+        <h1>Cetak Kartu Login</h1>
+        <p>Generate PDF kartu login untuk siswa, guru, maupun admin.</p>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:200px;">
+            <label class="form-label">Pilih Kelompok</label>
+            <select id="sel-kartu-target">
+              <optgroup label="Semua Siswa">${semuaSiswaOpt}</optgroup>
+              <optgroup label="Siswa per Kelas">${tanpaKelasOpt}${kelasOpts}</optgroup>
+              <optgroup label="Staf">${guruOpt}${adminOpt}</optgroup>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="Admin.generateKartu()">Generate &amp; Unduh PDF</button>
+        </div>
+        <div style="margin-top:14px;padding:11px 14px;background:var(--ink-50);border-radius:var(--radius);font-size:12.5px;color:var(--ink-400);line-height:1.7;">
+          <strong style="color:var(--ink-700);">Layout otomatis per peran:</strong><br>
+          Siswa → 2 kolom × 5 baris = <strong>10 kartu/hal</strong> &nbsp;·&nbsp;
+          Guru &amp; Admin → 2 kolom × 4 baris = <strong>8 kartu/hal</strong>
+        </div>
+      </div>`;
+},
 
 async generateKartu() {
-  const sel = document.getElementById('sel-kartu-target')?.value || '';
-  if (!sel) { UI.toast('Pilih kelompok terlebih dahulu.', 'warning'); return; }
+    const sel = document.getElementById('sel-kartu-target')?.value || '';
+    if (!sel) { UI.toast('Pilih kelompok terlebih dahulu.', 'warning'); return; }
 
-  const main = document.getElementById('main-panel');
-  const panelAsli = main.innerHTML;
-  main.innerHTML = UI.loaderHTML('Mengambil data pengguna...');
+    const main = document.getElementById('main-panel');
+    const panelAsli = main.innerHTML;
+    main.innerHTML = UI.loaderHTML('Mengambil data pengguna...');
 
-  const [peranKey, targetVal] = sel.split('::');
-  const isSiswa = peranKey === 'siswa';
-  const tahun   = STATE.config['Tahun_Ajaran_Aktif'] || '';
+    const [peranKey, targetVal] = sel.split('::');
+    const isSiswa = peranKey === 'siswa';
+    const tahun   = STATE.config['Tahun_Ajaran_Aktif'] || '';
 
-  let data = [];
-  let namaFile = 'Kartu_Login';
+    let data = [];
+    let namaFile = 'Kartu_Login';
 
-  // Ambil data sesuai pilihan
-  if (isSiswa) {
-    if (targetVal === 'SEMUA') {
-      const res = await API.call('getDaftarPengguna', {
-        filter: { peran: 'Siswa', status: 'Aktif' }, page: 1, limit: 1000
-      });
-      if (res?.data) data = res.data.map(u => ({
-        id: u.ID_Pengguna, nama: u.Nama_Lengkap,
-        pin: u.PIN, kelas: u.Kelas || 'Siswa Baru'
-      }));
-      namaFile = 'Kartu_Login_Semua_Siswa';
-    } else if (targetVal === 'TANPA_KELAS') {
-      const res = await API.call('getDaftarPengguna', {
-        filter: { peran: 'Siswa', status: 'Aktif' }, page: 1, limit: 1000
-      });
-      if (res?.data) data = res.data
-        .filter(u => !u.Kelas || u.Kelas.toString().trim() === '')
-        .map(u => ({
-          id: u.ID_Pengguna, nama: u.Nama_Lengkap,
-          pin: u.PIN, kelas: 'Siswa Baru'
-        }));
-      namaFile = 'Kartu_Login_Siswa_Baru';
+    if (isSiswa) {
+      if (targetVal === 'SEMUA') {
+        const res = await API.call('getDaftarPengguna', {
+          filter: { peran: 'Siswa', status: 'Aktif' }, page: 1, limit: 1000
+        });
+        if (res && res.data) {
+          data = res.data.map(u => ({
+            id: u.ID_Pengguna, nama: u.Nama_Lengkap,
+            pin: u.PIN, kelas: u.Kelas || 'Siswa Baru'
+          }));
+        }
+        namaFile = 'Kartu_Login_Semua_Siswa';
+      } else if (targetVal === 'TANPA_KELAS') {
+        const res = await API.call('getDaftarPengguna', {
+          filter: { peran: 'Siswa', status: 'Aktif' }, page: 1, limit: 1000
+        });
+        if (res && res.data) {
+          data = res.data
+            .filter(u => !u.Kelas || u.Kelas.toString().trim() === '')
+            .map(u => ({
+              id: u.ID_Pengguna, nama: u.Nama_Lengkap,
+              pin: u.PIN, kelas: 'Siswa Baru'
+            }));
+        }
+        namaFile = 'Kartu_Login_Siswa_Baru';
+      } else {
+        data = await API.call('getDataKartuUjian', { kelas: targetVal });
+        if (data) data = data.map(u => ({ ...u, kelas: targetVal }));
+        namaFile = 'Kartu_Login_Asesmen_' + targetVal.replace(/\s+/g, '_');
+      }
     } else {
-      data = await API.call('getDataKartuUjian', { kelas: targetVal });
-      if (data) data = data.map(u => ({ ...u, kelas: targetVal }));
-      namaFile = 'Kartu_Login_Asesmen_' + targetVal.replace(/\s+/g, '_');
+      const res = await API.call('getDaftarPengguna', {
+        filter: { peran: targetVal, status: 'Aktif' }, page: 1, limit: 500
+      });
+      if (res && res.data) {
+        data = res.data.map(u => ({
+          id: u.ID_Pengguna, nama: u.Nama_Lengkap,
+          pin: u.PIN, kelas: u.Kelas || targetVal
+        }));
+      }
+      namaFile = 'Kartu_Login_Asesmen_' + targetVal;
     }
-  } else {
-    const res = await API.call('getDaftarPengguna', {
-      filter: { peran: targetVal, status: 'Aktif' }, page: 1, limit: 500
+
+    if (!data || data.length === 0) {
+      main.innerHTML = panelAsli;
+      UI.toast('Tidak ada data untuk kelompok ini.', 'warning');
+      return;
+    }
+
+    // Kertas F4 (215.9mm x 330.2mm) dalam point
+    const PAGE_W = 612;
+    const PAGE_H = 935;
+    const COLS = 2;
+    const ROWS_PP = isSiswa ? 5 : 4;   // siswa 5 baris, guru/admin 4 baris
+    const MRG = 18;                    // margin dalam pt (≈ 6.35mm)
+    const TOLERANSI = 6;              // ruang ekstra agar tidak terpotong
+
+    // Tinggi kartu: (tinggi halaman - 2*margin - toleransi) / jumlah baris
+    const CARD_H = Math.floor((PAGE_H - 2 * MRG - TOLERANSI) / ROWS_PP);
+    const CARD_W = Math.floor((PAGE_W - 2 * MRG) / COLS);
+
+    const HDR_H = Math.min(52, Math.max(38, Math.floor(CARD_H * 0.30)));
+    const BODY_H = CARD_H - HDR_H;
+    const F = 9;
+    const LW = 48;
+
+    const buatKartu = (u) => {
+      const tipe = isSiswa ? 'Kartu Login Siswa' : ('Kartu Login ' + targetVal);
+      const CW = CARD_W - 2;
+
+      const rowNama = [
+        { text: 'Nama', fontSize: F, bold: true, color: '#4b5e52', border: [0,0,0,0], margin: [0,0,0,0] },
+        { text: ':', fontSize: F, color: '#8ea396', border: [0,0,0,0], margin: [0,0,0,0] },
+        { text: u.nama || '-', fontSize: F, bold: true, color: '#0f1a13', border: [0,0,0,0], margin: [3,0,0,0] }
+      ];
+      const rowKelas = isSiswa ? [
+        { text: 'Kelas', fontSize: F, bold: true, color: '#4b5e52', border: [0,0,0,0], margin: [0,4,0,0] },
+        { text: ':', fontSize: F, color: '#8ea396', border: [0,0,0,0], margin: [0,4,0,0] },
+        { text: u.kelas || targetVal || '-', fontSize: F, color: '#253428', border: [0,0,0,0], margin: [3,4,0,0] }
+      ] : null;
+      const rowID = [
+        { text: 'ID Login', fontSize: F, bold: true, color: '#4b5e52', border: [0,0,0,0], margin: [0,4,0,0] },
+        { text: ':', fontSize: F, color: '#8ea396', border: [0,0,0,0], margin: [0,4,0,0] },
+        { text: u.id || '-', fontSize: F, bold: true, color: '#2d4d38', border: [0,0,0,0], margin: [3,4,0,0] }
+      ];
+      const rowPIN = [
+        { text: 'PIN', fontSize: F, bold: true, color: '#4b5e52', border: [0,0,0,0], margin: [0,4,0,0] },
+        { text: ':', fontSize: F, color: '#8ea396', border: [0,0,0,0], margin: [0,4,0,0] },
+        { text: u.pin || '-', fontSize: F, bold: true, color: '#c1665b', border: [0,0,0,0], margin: [3,4,0,0] }
+      ];
+
+      const infoRows = isSiswa ? [rowNama, rowKelas, rowID, rowPIN] : [rowNama, rowID, rowPIN];
+
+      return {
+        border: [true, true, true, true],
+        fillColor: '#ffffff',
+        table: {
+          widths: ['*'],
+          heights: [HDR_H, BODY_H],
+          dontBreakRows: true,
+          body: [
+            [{
+              fillColor: '#e8f4ec',
+              border: [false, false, false, false],
+              margin: [0, 0, 0, 0],
+              stack: [
+                {
+                  text: 'ASESMEN DIAGNOSTIK',
+                  fontSize: F + 1.5, bold: true,
+                  alignment: 'center', color: '#1a2e22',
+                  margin: [4, Math.floor(HDR_H * 0.13), 4, 1]
+                },
+                {
+                  text: 'SD NEGERI 1 GODEGAN',
+                  fontSize: F, bold: true,
+                  alignment: 'center', color: '#2d4d38',
+                  margin: [4, 0, 4, 3]
+                },
+                {
+                  canvas: [{ type: 'line', x1: 8, y1: 0, x2: CW - 8, y2: 0, lineWidth: 0.8, lineColor: '#4a7c59' }],
+                  margin: [0, 0, 0, 3]
+                },
+                {
+                  text: tipe,
+                  fontSize: F - 1.5, italics: true,
+                  alignment: 'center', color: '#5f9973',
+                  margin: [4, 0, 4, 0]
+                }
+              ]
+            }],
+            [{
+              fillColor: '#ffffff',
+              border: [false, false, false, false],
+              margin: [0, 0, 0, 0],
+              stack: [
+                {
+                  table: { widths: [LW, 8, '*'], body: infoRows },
+                  layout: 'noBorders',
+                  margin: [10, 7, 8, 0]
+                },
+                {
+                  text: 'T.A. ' + tahun,
+                  fontSize: 6, color: '#c8d8cc',
+                  alignment: 'right',
+                  margin: [0, 3, 8, 0]
+                }
+              ]
+            }]
+          ]
+        },
+        layout: 'noBorders'
+      };
+    };
+
+    const CARDS_PER_PAGE = ROWS_PP * COLS;   // 10 siswa, 8 guru/admin
+    const totalPages = Math.ceil(data.length / CARDS_PER_PAGE);
+    const pages = [];
+
+    for (let p = 0; p < totalPages; p++) {
+      const startIdx = p * CARDS_PER_PAGE;
+      const endIdx = Math.min(startIdx + CARDS_PER_PAGE, data.length);
+      const pageData = data.slice(startIdx, endIdx);
+      const pageRows = [];
+      const rowsInPage = Math.ceil(pageData.length / COLS);
+
+      for (let r = 0; r < rowsInPage; r++) {
+        const row = [];
+        for (let c = 0; c < COLS; c++) {
+          const idx = r * COLS + c;
+          row.push(idx < pageData.length
+            ? buatKartu(pageData[idx])
+            : { text: '', border: [false, false, false, false], fillColor: '#f5f8f6' }
+          );
+        }
+        pageRows.push(row);
+      }
+
+      const pageTable = {
+        table: {
+          widths: ['*', '*'],
+          heights: Array(rowsInPage).fill(CARD_H),
+          dontBreakRows: true,
+          body: pageRows
+        },
+        layout: {
+          hLineWidth: function(i, node) {
+            return (i === 0 || i === node.table.body.length) ? 1.5 : 0.5;
+          },
+          vLineWidth: function(i) {
+            return (i === 0 || i === COLS) ? 1.5 : 0.5;
+          },
+          hLineColor: function(i, node) {
+            return (i === 0 || i === node.table.body.length) ? '#2d4d38' : '#bdd4c4';
+          },
+          vLineColor: function(i) {
+            return (i === 0 || i === COLS) ? '#2d4d38' : '#bdd4c4';
+          },
+          hLineStyle: function(i, node) {
+            return (i > 0 && i < node.table.body.length)
+              ? { dash: { length: 5, space: 4 } } : null;
+          },
+          vLineStyle: function(i) {
+            return (i > 0 && i < COLS)
+              ? { dash: { length: 5, space: 4 } } : null;
+          },
+          paddingLeft: () => 0,
+          paddingRight: () => 0,
+          paddingTop: () => 0,
+          paddingBottom: () => 0
+        }
+      };
+
+      if (p > 0) {
+        pageTable.pageBreak = 'before';
+      }
+      pages.push(pageTable);
+    }
+
+    pdfMake.createPdf({
+      pageSize: { width: PAGE_W, height: PAGE_H },
+      pageMargins: [MRG, MRG, MRG, MRG],
+      content: pages
+    }).download(namaFile + '.pdf', () => {
+      main.innerHTML = panelAsli;
+      UI.toast(`Berhasil membuat ${data.length} kartu login.`, 'success');
     });
-    if (res?.data) data = res.data.map(u => ({
-      id: u.ID_Pengguna, nama: u.Nama_Lengkap,
-      pin: u.PIN, kelas: u.Kelas || targetVal
-    }));
-    namaFile = 'Kartu_Login_Asesmen_' + targetVal;
-  }
-
-  if (!data || data.length === 0) {
-    main.innerHTML = panelAsli;
-    UI.toast('Tidak ada data untuk kelompok ini.', 'warning');
-    return;
-  }
-
-  // Konfigurasi F4 & layout
-  const COLS = 2;
-  const ROWS_PP = isSiswa ? 5 : 4;          // 10 kartu/hal untuk siswa
-  const MRG = 18;
-  const PAGE_W = 612;   // F4 width (pt)
-  const PAGE_H = 935;   // F4 height (pt)
-  const CARD_H = Math.floor((PAGE_H - MRG * 2) / ROWS_PP);
-  const CARD_W = Math.floor((PAGE_W - MRG * 2) / COLS);
-  const HDR_H = Math.min(52, Math.max(38, Math.floor(CARD_H * 0.30)));
-  const BODY_H = CARD_H - HDR_H;
-  const F = 9;
-  const LW = 48;
-
-  // Fungsi pembuat satu kartu
-  const buatKartu = (u) => {
-    const tipe = isSiswa ? 'Kartu Login Siswa' : ('Kartu Login ' + targetVal);
-    const CW = CARD_W - 2;
-
-    const rowNama = [
-      { text: 'Nama', fontSize: F, bold: true, color: '#4b5e52', border: [0,0,0,0], margin: [0,0,0,0] },
-      { text: ':', fontSize: F, color: '#8ea396', border: [0,0,0,0], margin: [0,0,0,0] },
-      { text: u.nama || '-', fontSize: F, bold: true, color: '#0f1a13', border: [0,0,0,0], margin: [3,0,0,0] }
-    ];
-    const rowKelas = isSiswa ? [
-      { text: 'Kelas', fontSize: F, bold: true, color: '#4b5e52', border: [0,0,0,0], margin: [0,4,0,0] },
-      { text: ':', fontSize: F, color: '#8ea396', border: [0,0,0,0], margin: [0,4,0,0] },
-      { text: u.kelas || targetVal || '-', fontSize: F, color: '#253428', border: [0,0,0,0], margin: [3,4,0,0] }
-    ] : null;
-    const rowID = [
-      { text: 'ID Login', fontSize: F, bold: true, color: '#4b5e52', border: [0,0,0,0], margin: [0,4,0,0] },
-      { text: ':', fontSize: F, color: '#8ea396', border: [0,0,0,0], margin: [0,4,0,0] },
-      { text: u.id || '-', fontSize: F, bold: true, color: '#2d4d38', border: [0,0,0,0], margin: [3,4,0,0] }
-    ];
-    const rowPIN = [
-      { text: 'PIN', fontSize: F, bold: true, color: '#4b5e52', border: [0,0,0,0], margin: [0,4,0,0] },
-      { text: ':', fontSize: F, color: '#8ea396', border: [0,0,0,0], margin: [0,4,0,0] },
-      { text: u.pin || '-', fontSize: F, bold: true, color: '#c1665b', border: [0,0,0,0], margin: [3,4,0,0] }
-    ];
-
-    const infoRows = isSiswa ? [rowNama, rowKelas, rowID, rowPIN] : [rowNama, rowID, rowPIN];
-
-    return {
-      border: [true, true, true, true],
-      fillColor: '#ffffff',
-      table: {
-        widths: ['*'],
-        heights: [HDR_H, BODY_H],
-        dontBreakRows: true,
-        body: [
-          [{
-            fillColor: '#e8f4ec',
-            border: [false, false, false, false],
-            margin: [0, 0, 0, 0],
-            stack: [
-              {
-                text: 'ASESMEN DIAGNOSTIK',
-                fontSize: F + 1.5, bold: true,
-                alignment: 'center', color: '#1a2e22',
-                margin: [4, Math.floor(HDR_H * 0.13), 4, 1]
-              },
-              {
-                text: 'SD NEGERI 1 GODEGAN',
-                fontSize: F, bold: true,
-                alignment: 'center', color: '#2d4d38',
-                margin: [4, 0, 4, 3]
-              },
-              {
-                canvas: [{ type: 'line', x1: 8, y1: 0, x2: CW - 8, y2: 0, lineWidth: 0.8, lineColor: '#4a7c59' }],
-                margin: [0, 0, 0, 3]
-              },
-              {
-                text: tipe,
-                fontSize: F - 1.5, italics: true,
-                alignment: 'center', color: '#5f9973',
-                margin: [4, 0, 4, 0]
-              }
-            ]
-          }],
-          [{
-            fillColor: '#ffffff',
-            border: [false, false, false, false],
-            margin: [0, 0, 0, 0],
-            stack: [
-              {
-                table: { widths: [LW, 8, '*'], body: infoRows },
-                layout: 'noBorders',
-                margin: [10, 7, 8, 0]
-              },
-              {
-                text: 'T.A. ' + tahun,
-                fontSize: 6, color: '#c8d8cc',
-                alignment: 'right',
-                margin: [0, 3, 8, 0]
-              }
-            ]
-          }]
-        ]
-      },
-      layout: 'noBorders'
-    };
-  };
-
-  // --- Penyusunan halaman per 10 kartu ---
-  const loaderText = document.querySelector('.page-loader p');
-  const CARDS_PER_PAGE = ROWS_PP * COLS;   // 10 (siswa) atau 8 (guru/admin)
-  const totalPages = Math.ceil(data.length / CARDS_PER_PAGE);
-  const pages = [];
-
-  for (let p = 0; p < totalPages; p++) {
-    const startIdx = p * CARDS_PER_PAGE;
-    const endIdx = Math.min(startIdx + CARDS_PER_PAGE, data.length);
-    const pageData = data.slice(startIdx, endIdx);
-    const pageRows = [];
-    const pageTotal = Math.ceil(pageData.length / COLS);   // jumlah baris di halaman ini
-
-    for (let r = 0; r < pageTotal; r++) {
-      const row = [];
-      for (let c = 0; c < COLS; c++) {
-        const idx = r * COLS + c;
-        row.push(idx < pageData.length
-          ? buatKartu(pageData[idx])
-          : { text: '', border: [false, false, false, false], fillColor: '#f5f8f6' }
-        );
-      }
-      pageRows.push(row);
-    }
-
-    // Tabel untuk satu halaman
-    const pageTable = {
-      table: {
-        widths: ['*', '*'],
-        heights: Array(pageTotal).fill(CARD_H),
-        dontBreakRows: true,
-        body: pageRows
-      },
-      layout: {
-        hLineWidth: function (i, node) {
-          return (i === 0 || i === node.table.body.length) ? 1.5 : 0.5;
-        },
-        vLineWidth: function (i) {
-          return (i === 0 || i === COLS) ? 1.5 : 0.5;
-        },
-        hLineColor: function (i, node) {
-          return (i === 0 || i === node.table.body.length) ? '#2d4d38' : '#bdd4c4';
-        },
-        vLineColor: function (i) {
-          return (i === 0 || i === COLS) ? '#2d4d38' : '#bdd4c4';
-        },
-        hLineStyle: function (i, node) {
-          return (i > 0 && i < node.table.body.length)
-            ? { dash: { length: 5, space: 4 } } : null;
-        },
-        vLineStyle: function (i) {
-          return (i > 0 && i < COLS)
-            ? { dash: { length: 5, space: 4 } } : null;
-        },
-        paddingLeft: () => 0,
-        paddingRight: () => 0,
-        paddingTop: () => 0,
-        paddingBottom: () => 0
-      }
-    };
-
-    // Halaman pertama tanpa pageBreak, halaman berikutnya dengan pageBreak
-    if (p > 0) {
-      pageTable.pageBreak = 'before';
-    }
-    pages.push(pageTable);
-
-    // Update progress (setiap halaman selesai)
-    if (loaderText) {
-      const pct = Math.round(((p + 1) / totalPages) * 100);
-      loaderText.textContent = `Menyusun halaman... ${pct}%`;
-    }
-    // Beri jeda kecil agar UI tidak membeku
-    await new Promise(resolve => setTimeout(resolve, 10));
-  }
-
-  // Tampilkan pesan final sebelum download
-  if (loaderText) loaderText.textContent = 'Menyusun dokumen PDF. Harap tunggu...';
-
-  // Generate PDF dengan konten halaman‑halaman yang sudah disusun
-  pdfMake.createPdf({
-    pageSize: { width: PAGE_W, height: PAGE_H },
-    pageMargins: [MRG, MRG, MRG, MRG],
-    content: pages
-  }).download(namaFile + '.pdf', () => {
-    main.innerHTML = panelAsli;
-    UI.toast(`Berhasil membuat ${data.length} kartu login.`, 'success');
-  });
 },
 
   cetakSoalPDFForm() { API.call('getDaftarKelas').then(kelasList => { const kls = kelasList || ['Semua Kelas']; UI.prompt('Cetak Lembar Soal (PDF)', [ { label: 'Kelas Sasaran', type: 'select', options: kls }, { label: 'Modul Asesmen', type: 'select', options: ['Literasi', 'Numerasi', 'Nonkognitif'] } ], vals => { this.generateSoalPDF(vals[0], vals[1]); }); }); },
