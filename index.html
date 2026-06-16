@@ -35,6 +35,9 @@ body { font-family: var(--font-body); font-size: 14px; line-height: 1.6; color: 
 .hidden { display:none !important; }
 a { color: inherit; text-decoration: none; }
 input, select, textarea, button { font-family: inherit; }
+/* Anti-cheat CSS */
+body.exam-mode { user-select: none; -webkit-user-select: none; }
+body.exam-mode input, body.exam-mode textarea { user-select: text; -webkit-user-select: text; }
 /* ============================================================
    FORM ELEMENTS
    ============================================================ */
@@ -131,11 +134,11 @@ input[type="radio"], input[type="checkbox"] { width: 16px; height: 16px; accent-
 .sidebar-nav { flex:1; overflow-y:auto; padding:8px 8px; }
 .nav-section-label { font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-500); padding:0 8px; margin:8px 0 3px; }
 .nav-item { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13.5px; font-weight: 500; color: var(--ink-300); transition: background var(--transition), color var(--transition); margin-bottom: 2px; position: relative; }
-.nav-item:hover:not(.locked) { background:rgba(255,255,255,.06); color:var(--white); }
+.nav-item:hover:not(.locked):not(.done) { background:rgba(255,255,255,.06); color:var(--white); }
 .nav-item.active { background:rgba(74,124,89,.18); color:var(--green-300); font-weight:600; }
 .nav-item.active::before { content:''; position:absolute; left:0; top:6px; bottom:6px; width:3px; border-radius:2px; background:var(--green-400); }
 .nav-item.locked { opacity:.35; cursor:not-allowed; }
-.nav-item.done   { color:var(--ink-500); }
+.nav-item.done   { color:var(--ink-500); cursor:not-allowed; }
 .sidebar-footer { padding: 10px 12px; border-top: 1px solid rgba(255,255,255,.06); }
 .topbar { display: none; align-items: center; justify-content: space-between; padding: 0 16px; height: 54px; background: var(--ink-900); position: sticky; top:0; z-index:150; }
 .topbar-brand { font-size:14px; font-weight:700; color:var(--white); }
@@ -224,9 +227,11 @@ tbody tr:hover { background: var(--ink-50); }
 .likert-wrap { overflow-x:auto; border-radius:var(--radius); border:1px solid var(--ink-100); }
 .likert-table { width:100%; border-collapse:collapse; }
 .likert-table thead th { padding:10px 14px; background:var(--green-50); font-size:11.5px; font-weight:700; color:var(--green-700); border-bottom:1px solid var(--ink-100); border-right:1px solid var(--ink-100); white-space:nowrap; text-align:center; }
-.likert-table thead th:first-child { text-align:left; width:45%; }
+.likert-table thead th:first-child { width:40px; text-align:center; }
+.likert-table thead th:nth-child(2) { text-align:left; width:45%; }
 .likert-table tbody td { padding:11px 14px; border-bottom:1px solid var(--ink-100); border-right:1px solid var(--ink-100); text-align:center; font-size:13.5px; white-space:normal; }
-.likert-table tbody td:first-child { text-align:left; font-weight:500; color:var(--ink-700); }
+.likert-table tbody td:first-child { text-align:center; font-weight:600; color:var(--ink-500); }
+.likert-table tbody td:nth-child(2) { text-align:left; font-weight:500; color:var(--ink-700); }
 .likert-radio { width:18px; height:18px; accent-color:var(--green-500); cursor:pointer; }
 .palette-card { background: var(--white); border: 1px solid var(--ink-100); border-radius: var(--radius-lg); padding: 14px; position: sticky; top: 80px; box-shadow: var(--shadow-xs); }
 .palette-card h4 { font-size:13px; font-weight:700; color:var(--ink-500); text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px; }
@@ -653,10 +658,10 @@ const UI = {
   },
   likertTable(group, stateUjian, nsPrefix) {
     const opsi = group.opsi || [];
-    let h = `<div class="soal-block with-stimulus"><div class="q-label" style="font-size:13px;text-transform:none;letter-spacing:0;font-weight:700;color:var(--green-700);">${group.subModul}</div><p style="font-size:12.5px;color:var(--ink-500);margin-bottom:16px;">Pilih salah satu jawaban yang paling mencerminkan kondisi Anda.</p><div class="likert-wrap"><table class="likert-table"><thead><tr><th>Pernyataan</th>${opsi.map(o => `<th>${o}</th>`).join('')}</tr></thead><tbody>`;
+    let h = `<div class="soal-block with-stimulus"><div class="q-label" style="font-size:13px;text-transform:none;letter-spacing:0;font-weight:700;color:var(--green-700);">${group.subModul}</div><p style="font-size:12.5px;color:var(--ink-500);margin-bottom:16px;">Pilih salah satu jawaban yang paling mencerminkan kondisi Anda.</p><div class="likert-wrap"><table class="likert-table"><thead><tr><th>No</th><th>Pernyataan</th>${opsi.map(o => `<th>${o}</th>`).join('')}</tr></thead><tbody>`;
     group.questions.forEach(sq => {
       const val = stateUjian.jawaban[sq.idSoal] || '';
-      h += `<tr><td>${sq.nomorAsli}. ${sq.pertanyaan}</td>`;
+      h += `<tr><td>${sq.nomorAsli}</td><td>${sq.pertanyaan}</td>`;
       opsi.forEach(o => h += `<td><input type="radio" class="likert-radio" name="jwb_${sq.idSoal}" value="${o}" onchange="${nsPrefix}.onJawab('${sq.idSoal}','${o}')" ${val === o ? 'checked' : ''}></td>`);
       h += `</tr>`;
     });
@@ -698,7 +703,7 @@ const Router = {
     UI.closeSidebar(); STATE.currentPanel = panel;
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
     const target = document.querySelector(`.nav-item[data-panel="${panel}"]`);
-    if (target && !target.classList.contains('locked')) target.classList.add('active');
+    if (target && !target.classList.contains('locked') && !target.classList.contains('done')) target.classList.add('active');
     document.getElementById('main-panel').innerHTML = '';
     const role = STATE.user.peran.toLowerCase();
     if (role === 'siswa') Siswa.route(panel); else if (role === 'guru') Guru.route(panel); else if (role === 'admin') Admin.route(panel);
@@ -706,12 +711,14 @@ const Router = {
   renderSidebar() {
     const peran = STATE.user.peran.toLowerCase();
     const prog = (STATE.user.progres || '').split(',').filter(Boolean);
-    const navItem = (id, label, locked = false, done = false) =>
-      `<div class="nav-item${locked ? ' locked' : ''}${done ? ' done' : ''}" data-panel="${id}" onclick="${locked ? '' : `Router.go('${id}')`}">
+    const navItem = (id, label, locked = false, done = false) => {
+      const isClickable = !locked && !done;
+      return `<div class="nav-item${locked ? ' locked' : ''}${done ? ' done' : ''}" data-panel="${id}" onclick="${isClickable ? `Router.go('${id}')` : ''}">
         <span style="flex:1">${label}</span>
         ${done ? '<span style="font-size:11px;color:var(--green-400);">✓</span>' : ''}
         ${locked ? '<span style="font-size:11px;opacity:.5">Terkunci</span>' : ''}
       </div>`;
+    };
 
     let h = navItem('beranda', 'Beranda');
 
@@ -950,6 +957,8 @@ const Siswa = {
   _examSecurityHandlers: null,
   _pasangKeamananUjian() {
     if (this._examSecurityHandlers) return;
+    document.body.classList.add('exam-mode');
+    
     const onVisibility = () => { if (document.hidden && STATE.ujian.modul) this._lockUjian(); };
     const onBlur = () => { if (STATE.ujian.modul) this._lockUjian(); };
     const onContextMenu = (e) => { if (STATE.ujian.modul) { e.preventDefault(); return false; } };
@@ -958,12 +967,18 @@ const Siswa = {
       if ((ctrl && ['c','v','x','a','u','s','p'].includes(key)) || (ctrl && e.shiftKey && ['i','j'].includes(key)) || (e.key === 'F12') || (e.key === 'PrintScreen')) { e.preventDefault(); e.stopPropagation(); }
     };
     const onSelectStart = (e) => { if (STATE.ujian.modul && !['INPUT','TEXTAREA'].includes(e.target.tagName)) e.preventDefault(); };
+    const preventClipboard = (e) => { if (STATE.ujian.modul) e.preventDefault(); };
+
     document.addEventListener('visibilitychange', onVisibility); window.addEventListener('blur', onBlur); document.addEventListener('contextmenu', onContextMenu); document.addEventListener('keydown', onKeyDown, true); document.addEventListener('selectstart', onSelectStart);
-    this._examSecurityHandlers = { onVisibility, onBlur, onContextMenu, onKeyDown, onSelectStart }; STATE.ujian.violations = 0;
+    document.addEventListener('copy', preventClipboard); document.addEventListener('cut', preventClipboard); document.addEventListener('paste', preventClipboard);
+    
+    this._examSecurityHandlers = { onVisibility, onBlur, onContextMenu, onKeyDown, onSelectStart, preventClipboard }; STATE.ujian.violations = 0;
   },
   _copotiKeamananUjian() {
     if (!this._examSecurityHandlers) return; const h = this._examSecurityHandlers;
+    document.body.classList.remove('exam-mode');
     document.removeEventListener('visibilitychange', h.onVisibility); window.removeEventListener('blur', h.onBlur); document.removeEventListener('contextmenu', h.onContextMenu); document.removeEventListener('keydown', h.onKeyDown, true); document.removeEventListener('selectstart', h.onSelectStart);
+    document.removeEventListener('copy', h.preventClipboard); document.removeEventListener('cut', h.preventClipboard); document.removeEventListener('paste', h.preventClipboard);
     this._examSecurityHandlers = null;
   },
   _lockUjian() {
