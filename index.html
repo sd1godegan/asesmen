@@ -464,11 +464,14 @@ tbody tr:hover { background: var(--ink-50); }
 
 const API_URL = "https://script.google.com/macros/s/AKfycbyiOvVCJ0m0Pey2RU-Gh7gbUMzNZE18OV3ETDuT8stVsU7xvNkGTVXHxeJwRrpK0J3n0Q/exec";
 
+// Modifikasi STATE: Penambahan wadah Cache (Memori Lokal) untuk mencegah loading berulang
 const STATE = {
   user: null, config: {}, currentPanel: '',
   ujian: { modul: '', soalAktif: [], flatSoal: [], idxFlat: 0, jawaban: {}, ragu: {}, timer: null, waktuMulai: null, currentGroupKey: null, soalGroupMap: new Map() },
   koreksi: { antrean: [], aktif: null },
-  raporSiswa: null
+  raporSiswa: null,
+  cache: { users: null, soal: null, raporSekolah: null, raporKelas: null, koreksi: null, progres: null },
+  view: { page: 1, search: '' }
 };
 
 const API = {
@@ -601,11 +604,6 @@ const UI = {
     const totalPages = Math.max(1, Math.ceil(total / limit));
     const showing    = Math.min(limit, total - (page - 1) * limit);
     return `<div class="pagination"><span class="pagination-info">Menampilkan ${showing} dari ${total} data</span><div class="pagination-nav"><button class="btn btn-secondary btn-sm" ${page <= 1 ? 'disabled' : ''} onclick="${callbackStr}(${page - 1})">←</button><span class="page-info">Hal ${page} / ${totalPages}</span><button class="btn btn-secondary btn-sm" ${page >= totalPages ? 'disabled' : ''} onclick="${callbackStr}(${page + 1})">→</button></div></div>`;
-  },
-  searchFilter(inputId, tbodyId) {
-    const term = document.getElementById(inputId)?.value.toLowerCase() || '';
-    const rows = document.getElementById(tbodyId)?.getElementsByTagName('tr') || [];
-    for (const r of rows) r.style.display = r.innerText.toLowerCase().includes(term) ? '' : 'none';
   },
   questionBlock(soal, jwb, ragu, nsPrefix) {
     const val = jwb || ''; const isRagu = ragu || false;
@@ -1151,14 +1149,50 @@ const Guru = {
     };
     main.innerHTML = `<div class="hero"><h2>Selamat datang, ${STATE.user.nama}!</h2><p>Wali Kelas ${STATE.user.kelas}</p></div><div class="stat-grid stat-grid-3" style="margin-bottom:20px;"><div class="stat-card green"><div class="stat-label">Total Siswa</div><div class="stat-value">${stats.totalSiswa}</div></div><div class="stat-card green"><div class="stat-label">Sudah Dinilai</div><div class="stat-value">${stats.sudahDinilai}</div></div><div class="stat-card ${stats.belumDinilai>0?'red':'green'}"><div class="stat-label">Belum Dinilai</div><div class="stat-value">${stats.belumDinilai}</div></div></div><div class="card">${UI.progressBar(stats.sudahDinilai, stats.totalSiswa, `Partisipasi Kelas — ${partisipasi}%`)}</div>${buildKategoriGrid('Distribusi Literasi', stats.literasi)} ${buildKategoriGrid('Distribusi Numerasi', stats.numerasi)} ${stats.gayaBelajar && Object.keys(stats.gayaBelajar).length ? buildKategoriGrid('Gaya Belajar Siswa', stats.gayaBelajar) : ''} ${stats.minat && Object.keys(stats.minat).length ? buildKategoriGrid('Minat Siswa', stats.minat) : ''} ${stats.bakat && Object.keys(stats.bakat).length ? buildKategoriGrid('Bakat Siswa', stats.bakat) : ''} ${stats.kebiasaan && Object.keys(stats.kebiasaan).length ? buildKategoriGrid('7 Kebiasaan — Distribusi Dominan', stats.kebiasaan) : ''} ${stats.agama && Object.keys(stats.agama).length ? buildKategoriGrid('Pembiasaan Agama', stats.agama) : ''}`;
   },
-  async koreksi(page = 1) {
-    const main = document.getElementById('main-panel'); main.innerHTML = UI.loaderHTML(); const res = await API.call('getAntreanKoreksi', { page, limit:20 }); if (!res) return;
-    STATE.koreksi.antrean = res.data;
-    const rows = res.data.map((item, i) => [ `<div class="td-name"><strong>${item.nama}</strong></div>`, item.kelas, UI.badge(item.modul, 'auto'), `<button class="btn btn-primary btn-sm" onclick="Guru.bukaKoreksi(${i})">Buka &amp; Nilai</button>` ]);
-    main.innerHTML = `<div class="page-header"><h1>Antrean Koreksi Manual</h1><p>Soal uraian yang memerlukan penilaian manual dari guru.</p></div><div class="toolbar"><div class="toolbar-left"><input type="text" id="cari-koreksi" class="search-input" placeholder="Cari nama atau kelas..." oninput="UI.searchFilter('cari-koreksi','tbl-koreksi')"></div><div class="toolbar-right"><span style="font-size:13px;color:var(--ink-300);">${res.total} item antre</span></div></div>${UI.table(['Nama Siswa','Kelas','Modul','Aksi'], rows, { tbodyId:'tbl-koreksi' })}${UI.pagination(res.page, res.total, res.limit, 'Guru.koreksi')}`;
+  async koreksi() {
+    const main = document.getElementById('main-panel');
+    if (!STATE.cache.koreksi) {
+      main.innerHTML = UI.loaderHTML('Memuat antrean koreksi...');
+      const res = await API.call('getAntreanKoreksi', { page: 1, limit: 5000 });
+      if (res) STATE.cache.koreksi = res.data || [];
+      else return;
+    }
+    main.innerHTML = `
+      <div class="page-header"><h1>Antrean Koreksi Manual</h1><p>Soal uraian yang memerlukan penilaian manual dari guru.</p></div>
+      <div class="toolbar">
+        <div class="toolbar-left"><input type="text" id="cari-koreksi" class="search-input" placeholder="Cari nama atau kelas..." oninput="Guru.filterKoreksi()"></div>
+        <div class="toolbar-right">
+          <span style="font-size:13px;color:var(--ink-300);" id="koreksi-count">${STATE.cache.koreksi.length} item antre</span>
+          <button class="btn btn-ghost btn-sm" onclick="STATE.cache.koreksi=null; Guru.koreksi();">↻ Segarkan</button>
+        </div>
+      </div>
+      <div id="tabel-container"></div>
+    `;
+    STATE.view = { page: 1, search: '' };
+    this.renderTabelKoreksi();
+  },
+  filterKoreksi() {
+    STATE.view.search = document.getElementById('cari-koreksi').value.toLowerCase();
+    STATE.view.page = 1;
+    this.renderTabelKoreksi();
+  },
+  renderTabelKoreksi(page) {
+    if(page) STATE.view.page = page;
+    const limit = 20; let data = STATE.cache.koreksi; const s = STATE.view.search;
+    if(s) data = data.filter(i => (i.nama||'').toLowerCase().includes(s) || (i.kelas||'').toLowerCase().includes(s));
+    
+    document.getElementById('koreksi-count').textContent = `${data.length} item antre`;
+    const total = data.length; const start = (STATE.view.page - 1) * limit; const pageData = data.slice(start, start + limit);
+    
+    const rows = pageData.map(item => {
+      const origIdx = STATE.cache.koreksi.indexOf(item);
+      return [ `<div class="td-name"><strong>${item.nama}</strong></div>`, item.kelas, UI.badge(item.modul, 'auto'), `<button class="btn btn-primary btn-sm" onclick="Guru.bukaKoreksi(${origIdx})">Buka &amp; Nilai</button>` ];
+    });
+    
+    document.getElementById('tabel-container').innerHTML = UI.table(['Nama Siswa','Kelas','Modul','Aksi'], rows) + UI.pagination(STATE.view.page, total, limit, 'Guru.renderTabelKoreksi');
   },
   bukaKoreksi(idx) {
-    const item = STATE.koreksi.antrean[idx]; STATE.koreksi.aktif = item; const main = document.getElementById('main-panel'); let uraian = [];
+    const item = STATE.cache.koreksi[idx]; STATE.koreksi.aktif = item; const main = document.getElementById('main-panel'); let uraian = [];
     try { uraian = JSON.parse(item.jsonJawaban).uraian || []; } catch(e) {}
     let soalHtml = uraian.map((u, i) => `<div class="soal-block" style="margin-bottom:16px;"><div class="q-label">Soal Uraian ${i+1}</div><div class="q-text">${u.pertanyaan}</div><div class="koreksi-layout"><div><div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-300);margin-bottom:6px;">Jawaban Siswa</div><div class="koreksi-answer">${u.jawabanSiswa || '<em style="color:var(--ink-300);">Tidak dijawab</em>'}</div></div><div class="koreksi-panel"><h4>Penilaian</h4><div class="kunci-box"><div class="kunci-label">Kunci / Rubrik</div>${u.kunci || '-'}</div><div class="poin-input-wrap"><label>Poin (maks ${u.bobot}):</label><input type="number" class="input-poin poin-input" data-bobot="${u.bobot}" min="0" max="${u.bobot}" placeholder="0"></div></div></div></div>`).join('');
     main.innerHTML = `<div class="toolbar" style="margin-bottom:24px;"><div class="toolbar-left"><button class="btn btn-ghost btn-sm" onclick="Router.go('koreksi')">← Kembali</button><h2 style="font-size:18px;font-weight:700;color:var(--ink-900);">${item.nama}</h2>${UI.badge(item.modul,'auto')}</div><div class="toolbar-right"><button class="btn btn-primary" onclick="Guru.simpanKoreksi()">Kunci Penilaian</button></div></div>${soalHtml}`;
@@ -1169,12 +1203,46 @@ const Guru = {
     inputs.forEach(inp => { const v = Number(inp.value), m = Number(inp.dataset.bobot); if (inp.value === '' || isNaN(v) || v < 0 || v > m) { inp.style.borderColor = 'var(--red-500)'; valid = false; } else { inp.style.borderColor = ''; total += v; } });
     if (!valid) { UI.toast('Periksa kembali nilai yang dimasukkan.', 'error'); return; }
     const res = await API.call('submitKoreksi', { dataKoreksi: [{ barisData: STATE.koreksi.aktif.barisData, totalNilai: total, idSiswa: STATE.koreksi.aktif.idSiswa, modul: STATE.koreksi.aktif.modul }] });
-    if (res) { UI.toast('Penilaian berhasil disimpan.', 'success'); Router.go('koreksi'); }
+    if (res) { 
+      UI.toast('Penilaian berhasil disimpan.', 'success'); 
+      STATE.cache.koreksi = null; // Hapus cache koreksi agar memuat ulang antrean terbaru
+      STATE.cache.raporKelas = null; // Pastikan rapor juga direset cachenya
+      Router.go('koreksi'); 
+    }
   },
-  async raporKelas(page = 1) {
-    const main = document.getElementById('main-panel'); main.innerHTML = UI.loaderHTML(); const res = await API.call('getRaporKelas', { page, limit:20 }); if (!res) return;
-    const rows = res.data.map(r => [ `<div class="td-name"><strong>${r.Nama_Siswa}</strong></div>`, r.Kelas, `${r.Skor_Literasi||'–'} &nbsp;${UI.badge(r.Kategori_Literasi||'','auto')}`, `${r.Skor_Numerasi||'–'} &nbsp;${UI.badge(r.Kategori_Numerasi||'','auto')}`, r.Gaya_Belajar_Dominan ? r.Gaya_Belajar_Dominan.split('|')[0] : '–', r.Faktor_Eksternal ? r.Faktor_Eksternal.split('|')[0] : '–' ]);
-    main.innerHTML = `<div class="page-header"><h1>Rapor Kelas</h1><p>Data hasil asesmen diagnostik seluruh siswa di kelas Anda.</p></div><div class="toolbar"><div class="toolbar-left"><input type="text" id="cari-rapor" class="search-input" placeholder="Cari nama siswa..." oninput="UI.searchFilter('cari-rapor','tbl-rapor')"></div></div>${UI.table(['Nama','Kelas','Literasi','Numerasi','Gaya Belajar','Faktor Eksternal'], rows, { tbodyId:'tbl-rapor' })}${UI.pagination(res.page, res.total, res.limit, 'Guru.raporKelas')}`;
+  async raporKelas() {
+    const main = document.getElementById('main-panel');
+    if(!STATE.cache.raporKelas) {
+      main.innerHTML = UI.loaderHTML('Memuat rapor kelas...');
+      const res = await API.call('getRaporKelas', { page: 1, limit: 5000 });
+      if(res) STATE.cache.raporKelas = res.data || [];
+      else return;
+    }
+    main.innerHTML = `
+      <div class="page-header"><h1>Rapor Kelas</h1><p>Data hasil asesmen diagnostik seluruh siswa di kelas Anda.</p></div>
+      <div class="toolbar">
+        <div class="toolbar-left"><input type="text" id="cari-rapor" class="search-input" placeholder="Cari nama siswa..." oninput="Guru.filterRaporKelas()"></div>
+        <div class="toolbar-right"><button class="btn btn-ghost btn-sm" onclick="STATE.cache.raporKelas=null; Guru.raporKelas();">↻ Segarkan</button></div>
+      </div>
+      <div id="tabel-container"></div>
+    `;
+    STATE.view = { page: 1, search: '' };
+    this.renderTabelRaporKelas();
+  },
+  filterRaporKelas() {
+    STATE.view.search = document.getElementById('cari-rapor').value.toLowerCase();
+    STATE.view.page = 1;
+    this.renderTabelRaporKelas();
+  },
+  renderTabelRaporKelas(page) {
+    if(page) STATE.view.page = page;
+    const limit = 20; let data = STATE.cache.raporKelas; const s = STATE.view.search;
+    if(s) data = data.filter(r => (r.Nama_Siswa||'').toLowerCase().includes(s));
+    
+    const total = data.length; const start = (STATE.view.page - 1) * limit; const pageData = data.slice(start, start + limit);
+    const rows = pageData.map(r => [ `<div class="td-name"><strong>${r.Nama_Siswa}</strong></div>`, r.Kelas, `${r.Skor_Literasi||'–'} &nbsp;${UI.badge(r.Kategori_Literasi||'','auto')}`, `${r.Skor_Numerasi||'–'} &nbsp;${UI.badge(r.Kategori_Numerasi||'','auto')}`, r.Gaya_Belajar_Dominan ? r.Gaya_Belajar_Dominan.split('|')[0] : '–', r.Faktor_Eksternal ? r.Faktor_Eksternal.split('|')[0] : '–' ]);
+    
+    document.getElementById('tabel-container').innerHTML = UI.table(['Nama','Kelas','Literasi','Numerasi','Gaya Belajar','Faktor Eksternal'], rows) + UI.pagination(STATE.view.page, total, limit, 'Guru.renderTabelRaporKelas');
   }
 };
 
@@ -1190,68 +1258,204 @@ const Admin = {
     };
     main.innerHTML = `<div class="hero"><h2>Selamat datang, ${STATE.user.nama}!</h2><p>Administrator · Tahun Ajaran ${STATE.config['Tahun_Ajaran_Aktif'] || '-'}</p></div><div class="stat-grid stat-grid-4" style="margin-bottom:20px;"><div class="stat-card green"><div class="stat-label">Total Siswa</div><div class="stat-value">${stats.totalSiswa}</div></div><div class="stat-card green"><div class="stat-label">Sudah Dinilai</div><div class="stat-value">${stats.sudahDinilai}</div></div><div class="stat-card ${stats.belumDinilai > 0 ? 'red' : 'green'}"><div class="stat-label">Belum Dinilai</div><div class="stat-value">${stats.belumDinilai}</div></div><div class="stat-card"><div class="stat-label">Partisipasi</div><div class="stat-value">${partisipasi}%</div></div></div><div class="card">${UI.progressBar(stats.sudahDinilai, stats.totalSiswa, 'Partisipasi Keseluruhan')}</div>${buildGrid('Distribusi Literasi', stats.literasi)} ${buildGrid('Distribusi Numerasi', stats.numerasi)} ${stats.gayaBelajar && Object.keys(stats.gayaBelajar).length ? buildGrid('Gaya Belajar Siswa', stats.gayaBelajar) : ''} ${stats.minat && Object.keys(stats.minat).length ? buildGrid('Minat Siswa', stats.minat) : ''} ${stats.bakat && Object.keys(stats.bakat).length ? buildGrid('Bakat Siswa', stats.bakat) : ''} ${stats.kebiasaan && Object.keys(stats.kebiasaan).length ? buildGrid('7 Kebiasaan — Distribusi Dominan', stats.kebiasaan) : ''} ${stats.agama && Object.keys(stats.agama).length ? buildGrid('Pembiasaan Agama', stats.agama) : ''}`;
   },
-  async manajemenUser(page = 1) {
-    const main = document.getElementById('main-panel'); main.innerHTML = UI.loaderHTML(); const res = await API.call('getDaftarPengguna', { page, limit:25 }); if (!res) return;
-
-    const rows = res.data.map(u => [
+  async manajemenUser() {
+    const main = document.getElementById('main-panel');
+    if (!STATE.cache.users) {
+      main.innerHTML = UI.loaderHTML('Memuat data pengguna...');
+      const res = await API.call('getDaftarPengguna', { page: 1, limit: 5000 });
+      if (res) STATE.cache.users = res.data || [];
+      else return;
+    }
+    main.innerHTML = `
+      <div class="page-header"><h1>Data Pengguna</h1><p>Kelola akun siswa, guru, dan administrator.</p></div>
+      <div class="toolbar">
+        <div class="toolbar-left"><input type="text" id="cari-user" class="search-input" placeholder="Cari nama atau ID..." oninput="Admin.filterUser()"></div>
+        <div class="toolbar-right">
+          <input type="file" id="file-user" accept=".xlsx,.xls" class="file-input-hidden" onchange="Admin.uploadExcel()">
+          <button class="btn btn-ghost btn-sm" onclick="STATE.cache.users=null; Admin.manajemenUser();">↻ Segarkan</button>
+          <button class="btn btn-secondary btn-sm" onclick="Admin.downloadTemplate()">Unduh Template</button>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('file-user').click()">Unggah Excel</button>
+          <button class="btn btn-primary btn-sm" onclick="Admin.tambahForm()">+ Tambah</button>
+        </div>
+      </div>
+      <div id="tabel-container"></div>
+    `;
+    STATE.view = { page: 1, search: '' };
+    this.renderTabelUser();
+  },
+  filterUser() {
+    STATE.view.search = document.getElementById('cari-user').value.toLowerCase();
+    STATE.view.page = 1;
+    this.renderTabelUser();
+  },
+  renderTabelUser(page) {
+    if(page) STATE.view.page = page;
+    const limit = 25; let data = STATE.cache.users; const s = STATE.view.search;
+    if(s) {
+      data = data.filter(u => (u.Nama_Lengkap||'').toLowerCase().includes(s) || (u.ID_Pengguna||'').toLowerCase().includes(s) || (u.Kelas||'').toLowerCase().includes(s));
+    }
+    const total = data.length; const start = (STATE.view.page - 1) * limit; const pageData = data.slice(start, start + limit);
+    const rows = pageData.map(u => [
       u.ID_Pengguna, `<div class="td-name"><strong>${u.Nama_Lengkap}</strong><small>PIN: ${u.PIN}</small></div>`, UI.badge(u.Peran,'neutral'), u.Kelas || '–', u.Status_Aktif === 'Aktif' ? UI.badge('Aktif','green') : UI.badge('Nonaktif','red'),
       `<div style="display:flex;gap:6px;">
-        <button class="btn btn-secondary btn-sm action-btn" data-action="edit" data-id="${u.ID_Pengguna}" data-nama="${u.Nama_Lengkap}" data-kelas="${u.Kelas||''}">Edit</button>
-        <button class="btn btn-danger btn-sm action-btn" data-action="hapus" data-id="${u.ID_Pengguna}">Hapus</button>
+        <button class="btn btn-secondary btn-sm" onclick="Admin.editForm('${u.ID_Pengguna}')">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="Admin.hapusUser('${u.ID_Pengguna}')">Hapus</button>
       </div>`
     ]);
-
-    main.innerHTML = `<div class="page-header"><h1>Data Pengguna</h1><p>Kelola akun siswa, guru, dan administrator.</p></div><div class="toolbar"><div class="toolbar-left"><input type="text" id="cari-user" class="search-input" placeholder="Cari nama atau ID..." oninput="UI.searchFilter('cari-user','tbl-user')"></div><div class="toolbar-right"><input type="file" id="file-user" accept=".xlsx,.xls" class="file-input-hidden" onchange="Admin.uploadExcel()"><button class="btn btn-secondary btn-sm" onclick="Admin.downloadTemplate()">Unduh Template</button><button class="btn btn-secondary btn-sm" onclick="document.getElementById('file-user').click()">Unggah Excel</button><button class="btn btn-primary btn-sm" onclick="Admin.tambahForm()">+ Tambah</button></div></div>${UI.table(['ID','Nama / PIN','Peran','Kelas','Status','Aksi'], rows, { tbodyId:'tbl-user' })}${UI.pagination(res.page, res.total, res.limit, 'Admin.manajemenUser')}`;
-
-    document.getElementById('tbl-user').addEventListener('click', e => {
-      const btn = e.target.closest('.action-btn'); if (!btn) return;
-      if (btn.dataset.action === 'edit') this.editForm(btn.dataset.id, btn.dataset.nama, btn.dataset.kelas);
-      if (btn.dataset.action === 'hapus') this.hapusUser(btn.dataset.id);
-    });
+    document.getElementById('tabel-container').innerHTML = UI.table(['ID','Nama / PIN','Peran','Kelas','Status','Aksi'], rows) + UI.pagination(STATE.view.page, total, limit, 'Admin.renderTabelUser');
   },
-  tambahForm() { UI.prompt('Tambah Pengguna Baru', [ { label:'Nama Lengkap', placeholder:'Nama lengkap' }, { label:'Peran', type:'select', options:['Siswa','Guru','Admin'] }, { label:'Kelas', placeholder:'Contoh: Kelas 5A', required:false } ], vals => { API.call('tambahPenggunaBatch', { dataArray: [{ nama:vals[0], peran:vals[1], kelas:vals[2]||'Siswa Baru' }] }).then(r => { if(r) { UI.toast('Pengguna berhasil ditambahkan.','success'); Router.go('manajemen-user'); }}); }); },
-  editForm(id, nama, kelas) { UI.prompt('Edit Pengguna', [ { label:'Nama Lengkap', value:nama }, { label:'Kelas', value:kelas, required:false } ], vals => { API.call('editPengguna', { idTarget:id, dataBaru:{ nama:vals[0], kelas:vals[1] } }).then(r => { if(r) { UI.toast('Data berhasil diperbarui.','success'); Router.go('manajemen-user'); }}); }); },
-  hapusUser(id) { UI.confirm('Nonaktifkan Akun?', `Akun ${id} akan dinonaktifkan dan tidak bisa login.`, () => { API.call('hapusPengguna', { idTarget:id }).then(r => { if(r) { UI.toast('Akun dinonaktifkan.','success'); Router.go('manajemen-user'); }}); }, { confirmLabel:'Nonaktifkan', danger:true }); },
+  tambahForm() { 
+    UI.prompt('Tambah Pengguna Baru', [ { label:'Nama Lengkap', placeholder:'Nama lengkap' }, { label:'Peran', type:'select', options:['Siswa','Guru','Admin'] }, { label:'Kelas', placeholder:'Contoh: Kelas 5A', required:false } ], vals => { 
+      API.call('tambahPenggunaBatch', { dataArray: [{ nama:vals[0], peran:vals[1], kelas:vals[2]||'Siswa Baru' }] }).then(r => { 
+        if(r) { UI.toast('Pengguna berhasil ditambahkan.','success'); STATE.cache.users = null; Router.go('manajemen-user'); }
+      }); 
+    }); 
+  },
+  editForm(id) { 
+    const u = STATE.cache.users.find(x => x.ID_Pengguna === id);
+    if (!u) return;
+    UI.prompt('Edit Pengguna', [ { label:'Nama Lengkap', value:u.Nama_Lengkap }, { label:'Kelas', value:u.Kelas||'', required:false } ], vals => { 
+      API.call('editPengguna', { idTarget:id, dataBaru:{ nama:vals[0], kelas:vals[1] } }).then(r => { 
+        if(r) { UI.toast('Data berhasil diperbarui.','success'); STATE.cache.users = null; Router.go('manajemen-user'); }
+      }); 
+    }); 
+  },
+  hapusUser(id) { 
+    UI.confirm('Nonaktifkan Akun?', `Akun ${id} akan dinonaktifkan dan tidak bisa login.`, () => { 
+      API.call('hapusPengguna', { idTarget:id }).then(r => { 
+        if(r) { UI.toast('Akun dinonaktifkan.','success'); STATE.cache.users = null; Router.go('manajemen-user'); }
+      }); 
+    }, { confirmLabel:'Nonaktifkan', danger:true }); 
+  },
   downloadTemplate() { const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ Nama_Lengkap:'Contoh Siswa', Peran:'Siswa', Kelas:'Kelas 5A' }]), 'Template'); XLSX.writeFile(wb, 'Template_Pengguna.xlsx'); },
-  async uploadExcel() { const f = document.getElementById('file-user').files[0]; if (!f) return; const buf = await f.arrayBuffer(); const wb = XLSX.read(new Uint8Array(buf), { type:'array' }); const ws = wb.Sheets[wb.SheetNames[0]]; const json = XLSX.utils.sheet_to_json(ws); const data = json.map(r => ({ nama: r.Nama_Lengkap||r.nama, peran: r.Peran||r.peran||'Siswa', kelas: r.Kelas||r.kelas||'Siswa Baru' })); const res = await API.call('tambahPenggunaBatch', { dataArray:data }); if (res) { UI.toast(`${data.length} pengguna berhasil diunggah.`, 'success'); Router.go('manajemen-user'); } },
-  async bankSoal(page = 1) {
-    const main = document.getElementById('main-panel'); main.innerHTML = UI.loaderHTML(); const res = await API.call('getBankSoal', { page, limit:25 }); if (!res) return;
-
-    const rows = res.data.map(s => [
+  async uploadExcel() { const f = document.getElementById('file-user').files[0]; if (!f) return; const buf = await f.arrayBuffer(); const wb = XLSX.read(new Uint8Array(buf), { type:'array' }); const ws = wb.Sheets[wb.SheetNames[0]]; const json = XLSX.utils.sheet_to_json(ws); const data = json.map(r => ({ nama: r.Nama_Lengkap||r.nama, peran: r.Peran||r.peran||'Siswa', kelas: r.Kelas||r.kelas||'Siswa Baru' })); const res = await API.call('tambahPenggunaBatch', { dataArray:data }); if (res) { UI.toast(`${data.length} pengguna berhasil diunggah.`, 'success'); STATE.cache.users = null; Router.go('manajemen-user'); } },
+  async bankSoal() {
+    const main = document.getElementById('main-panel');
+    if (!STATE.cache.soal) {
+      main.innerHTML = UI.loaderHTML('Memuat bank soal...');
+      const res = await API.call('getBankSoal', { page: 1, limit: 5000 });
+      if (res) STATE.cache.soal = res.data || [];
+      else return;
+    }
+    main.innerHTML = `
+      <div class="page-header"><h1>Bank Soal</h1><p>Kelola soal asesmen untuk semua modul dan kelas.</p></div>
+      <div class="toolbar">
+        <div class="toolbar-left"><input type="text" id="cari-soal" class="search-input" placeholder="Cari ID atau pertanyaan..." oninput="Admin.filterSoal()"></div>
+        <div class="toolbar-right">
+          <input type="file" id="file-soal" accept=".xlsx,.xls" class="file-input-hidden" onchange="Admin.uploadSoalExcel()">
+          <button class="btn btn-ghost btn-sm" onclick="STATE.cache.soal=null; Admin.bankSoal();">↻ Segarkan</button>
+          <button class="btn btn-secondary btn-sm" onclick="Admin.cetakSoalPDFForm()">🖨️ Cetak PDF</button>
+          <button class="btn btn-secondary btn-sm" onclick="Admin.downloadTemplateSoal()">Template</button>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('file-soal').click()">Unggah</button>
+          <button class="btn btn-primary btn-sm" onclick="Admin.tambahSoalForm()">+ Soal</button>
+        </div>
+      </div>
+      <div id="tabel-container"></div>
+    `;
+    STATE.view = { page: 1, search: '' };
+    this.renderTabelSoal();
+  },
+  filterSoal() {
+    STATE.view.search = document.getElementById('cari-soal').value.toLowerCase();
+    STATE.view.page = 1;
+    this.renderTabelSoal();
+  },
+  renderTabelSoal(page) {
+    if(page) STATE.view.page = page;
+    const limit = 25; let data = STATE.cache.soal; const s = STATE.view.search;
+    if(s) data = data.filter(i => (i.idSoal||'').toLowerCase().includes(s) || (i.pertanyaan||'').toLowerCase().includes(s));
+    
+    const total = data.length; const start = (STATE.view.page - 1) * limit; const pageData = data.slice(start, start + limit);
+    const rows = pageData.map(s => [
       `<code style="font-size:11.5px;color:var(--ink-500);">${s.idSoal}</code>`, `<div class="td-name"><strong>${s.kelas}</strong><small>${s.modul}</small></div>`, s.pertanyaan ? s.pertanyaan.substring(0,50)+(s.pertanyaan.length>50?'…':'') : '–', UI.badge(s.tipe,'neutral'), s.status === 'Aktif' ? UI.badge('Aktif','green') : UI.badge('Arsip','amber'),
       `<div style="display:flex;gap:6px;">
-        <button class="btn btn-secondary btn-sm action-btn" data-action="toggle" data-modul="${s.modul}" data-kelas="${s.kelas}" data-status="${s.status==='Aktif'?'Arsip':'Aktif'}">Toggle</button>
-        <button class="btn btn-danger btn-sm action-btn" data-action="hapus" data-id="${s.idSoal}">Hapus</button>
+        <button class="btn btn-secondary btn-sm" onclick="Admin.toggleSoal('${s.idSoal}')">Toggle</button>
+        <button class="btn btn-danger btn-sm" onclick="Admin.hapusSoal('${s.idSoal}')">Hapus</button>
       </div>`
     ]);
-
-    main.innerHTML = `<div class="page-header"><h1>Bank Soal</h1><p>Kelola soal asesmen untuk semua modul dan kelas.</p></div><div class="toolbar"><div class="toolbar-left"><input type="text" id="cari-soal" class="search-input" placeholder="Cari ID atau pertanyaan..." oninput="UI.searchFilter('cari-soal','tbl-soal')"></div><div class="toolbar-right"><input type="file" id="file-soal" accept=".xlsx,.xls" class="file-input-hidden" onchange="Admin.uploadSoalExcel()"><button class="btn btn-secondary btn-sm" onclick="Admin.cetakSoalPDFForm()">🖨️ Cetak PDF</button><button class="btn btn-secondary btn-sm" onclick="Admin.downloadTemplateSoal()">Template</button><button class="btn btn-secondary btn-sm" onclick="document.getElementById('file-soal').click()">Unggah</button><button class="btn btn-primary btn-sm" onclick="Admin.tambahSoalForm()">+ Soal</button><button class="btn btn-ghost btn-sm" onclick="API.call('refreshCache').then(r=>r&&UI.toast('Cache dibersihkan.','success'))">Refresh Cache</button></div></div>${UI.table(['ID Soal','Sasaran','Pertanyaan','Tipe','Status','Aksi'], rows, { tbodyId:'tbl-soal' })}${UI.pagination(res.page, res.total, res.limit, 'Admin.bankSoal')}`;
-
-    document.getElementById('tbl-soal').addEventListener('click', e => {
-      const btn = e.target.closest('.action-btn'); if (!btn) return;
-      if (btn.dataset.action === 'toggle') this.toggleSoal(btn.dataset.modul, btn.dataset.kelas, btn.dataset.status);
-      if (btn.dataset.action === 'hapus') this.hapusSoal(btn.dataset.id);
-    });
+    document.getElementById('tabel-container').innerHTML = UI.table(['ID Soal','Sasaran','Pertanyaan','Tipe','Status','Aksi'], rows) + UI.pagination(STATE.view.page, total, limit, 'Admin.renderTabelSoal');
   },
-  tambahSoalForm() { UI.prompt('Tambah Soal', [ { label:'ID Soal', placeholder:'Contoh: LIT-001' }, { label:'Modul', type:'select', options:['Literasi','Numerasi','Gaya Belajar','Minat','Bakat','7 Kebiasaan','Agama','Faktor Eksternal','Literasi Dasar','Numerasi Dasar'] }, { label:'Pertanyaan', placeholder:'Tulis pertanyaan' } ], vals => { API.call('tambahSoal', { dataSoal: { idSoal:vals[0], kelas:'Semua Kelas', modul:vals[1], dimensi:'L1', tipe:'PG', pertanyaan:vals[2], opsi:'A|B|C', kunci:'A', bobot:1, status:'Aktif' }}).then(r => { if(r) { UI.toast('Soal ditambahkan.','success'); Router.go('bank-soal'); }}); }); },
-  toggleSoal(modul, kelas, status) { UI.confirm(`Ubah Status ke "${status}"?`, `Semua soal modul ${modul} akan diubah statusnya.`, () => { API.call('toggleStatusSoalBatch', { modul, kelas, statusBaru:status }).then(r => { if(r) { UI.toast(`Status diubah ke ${status}.`,'success'); Router.go('bank-soal'); }}); }, { confirmLabel:'Ubah' }); },
-  hapusSoal(id) { UI.confirm('Hapus Soal?', `Soal ${id} akan dihapus permanen.`, () => { API.call('hapusSoal', { idSoal:id }).then(r => { if(r) { UI.toast('Soal dihapus.','success'); Router.go('bank-soal'); }}); }, { confirmLabel:'Hapus Permanen', danger:true }); },
+  tambahSoalForm() { UI.prompt('Tambah Soal', [ { label:'ID Soal', placeholder:'Contoh: LIT-001' }, { label:'Modul', type:'select', options:['Literasi','Numerasi','Gaya Belajar','Minat','Bakat','7 Kebiasaan','Agama','Faktor Eksternal','Literasi Dasar','Numerasi Dasar'] }, { label:'Pertanyaan', placeholder:'Tulis pertanyaan' } ], vals => { API.call('tambahSoal', { dataSoal: { idSoal:vals[0], kelas:'Semua Kelas', modul:vals[1], dimensi:'L1', tipe:'PG', pertanyaan:vals[2], opsi:'A|B|C', kunci:'A', bobot:1, status:'Aktif' }}).then(r => { if(r) { UI.toast('Soal ditambahkan.','success'); STATE.cache.soal = null; Router.go('bank-soal'); }}); }); },
+  toggleSoal(id) { 
+    const s = STATE.cache.soal.find(x => x.idSoal === id);
+    if(!s) return;
+    const statBaru = s.status === 'Aktif' ? 'Arsip' : 'Aktif';
+    UI.confirm(`Ubah Status ke "${statBaru}"?`, `Status soal ${id} pada modul ${s.modul} akan diubah.`, () => { 
+      API.call('toggleStatusSoalBatch', { modul: s.modul, kelas: s.kelas, statusBaru: statBaru }).then(r => { 
+        if(r) { UI.toast(`Status diubah ke ${statBaru}.`,'success'); STATE.cache.soal = null; Router.go('bank-soal'); }
+      }); 
+    }, { confirmLabel:'Ubah' }); 
+  },
+  hapusSoal(id) { UI.confirm('Hapus Soal?', `Soal ${id} akan dihapus permanen.`, () => { API.call('hapusSoal', { idSoal:id }).then(r => { if(r) { UI.toast('Soal dihapus.','success'); STATE.cache.soal = null; Router.go('bank-soal'); }}); }, { confirmLabel:'Hapus Permanen', danger:true }); },
   downloadTemplateSoal() { const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ idSoal:'LIT-001', kelas:'Semua', modul:'Literasi', dimensi:'L1', tipe:'PG', pertanyaan:'...', opsi:'A|B|C', kunci:'A', bobot:1, status:'Aktif' }]), 'Template'); XLSX.writeFile(wb, 'Template_Soal.xlsx'); },
-  async uploadSoalExcel() { const f = document.getElementById('file-soal').files[0]; if (!f) return; const buf = await f.arrayBuffer(); const wb = XLSX.read(new Uint8Array(buf), { type:'array' }); const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); const res = await API.call('tambahSoalBatch', { dataArray:json }); if (res) { UI.toast(`Soal berhasil diunggah.`, 'success'); Router.go('bank-soal'); } },
+  async uploadSoalExcel() { const f = document.getElementById('file-soal').files[0]; if (!f) return; const buf = await f.arrayBuffer(); const wb = XLSX.read(new Uint8Array(buf), { type:'array' }); const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]); const res = await API.call('tambahSoalBatch', { dataArray:json }); if (res) { UI.toast(`Soal berhasil diunggah.`, 'success'); STATE.cache.soal = null; Router.go('bank-soal'); } },
   async progres() {
-    const main = document.getElementById('main-panel'); main.innerHTML = UI.loaderHTML(); const res = await API.call('getDaftarPengguna', { filter:{ peran:'Siswa' }, page:1, limit:500 }); if (!res) return;
-    const rows = res.data.map(u => [ `<code style="font-size:11.5px;">${u.ID_Pengguna}</code>`, `<div class="td-name"><strong>${u.Nama_Lengkap}</strong></div>`, u.Kelas || '–', u.Progres_Misi || '–', `<div style="display:flex;gap:5px;flex-wrap:wrap;"><button class="btn btn-danger btn-sm action-btn" data-action="reset" data-id="${u.ID_Pengguna}" data-mod="">Reset Total</button><button class="btn btn-ghost btn-sm action-btn" data-action="reset" data-id="${u.ID_Pengguna}" data-mod="Literasi">Lit</button><button class="btn btn-ghost btn-sm action-btn" data-action="reset" data-id="${u.ID_Pengguna}" data-mod="Numerasi">Num</button></div>` ]);
-    main.innerHTML = `<div class="page-header"><h1>Kendali Progres</h1><p>Reset progres asesmen siswa jika diperlukan.</p></div>${UI.table(['ID','Nama','Kelas','Progres','Aksi'], rows, { tbodyId:'tbl-progres' })}`;
-    document.getElementById('tbl-progres').addEventListener('click', e => {
-      const btn = e.target.closest('.action-btn'); if (!btn || btn.dataset.action !== 'reset') return;
-      this.resetProgres(btn.dataset.id, btn.dataset.mod);
-    });
+    const main = document.getElementById('main-panel');
+    if (!STATE.cache.progres) {
+      main.innerHTML = UI.loaderHTML('Memuat progres siswa...');
+      const res = await API.call('getDaftarPengguna', { filter:{ peran:'Siswa' }, page: 1, limit: 5000 });
+      if (res) STATE.cache.progres = res.data || [];
+      else return;
+    }
+    main.innerHTML = `
+      <div class="page-header"><h1>Kendali Progres</h1><p>Reset progres asesmen siswa jika diperlukan.</p></div>
+      <div class="toolbar">
+        <div class="toolbar-left"><input type="text" id="cari-progres" class="search-input" placeholder="Cari nama atau ID..." oninput="Admin.filterProgres()"></div>
+        <div class="toolbar-right"><button class="btn btn-ghost btn-sm" onclick="STATE.cache.progres=null; Admin.progres();">↻ Segarkan</button></div>
+      </div>
+      <div id="tabel-container"></div>
+    `;
+    STATE.view = { page: 1, search: '' };
+    this.renderTabelProgres();
   },
-  resetProgres(id, mod) { const label = mod ? `modul ${mod}` : 'semua modul'; UI.confirm('Reset Progres?', `Reset progres ${label} untuk siswa ${id}?`, () => { API.call('resetProgresSiswa', { idSiswa:id, modul:mod }).then(r => { if(r) { UI.toast('Progres berhasil direset.','success'); Router.go('manajemen-progres'); }}); }, { confirmLabel:'Reset', danger:true }); },
-  async raporSekolah(page = 1) {
-    const main = document.getElementById('main-panel'); main.innerHTML = UI.loaderHTML(); const res = await API.call('getRaporKelas', { page, limit:25 }); if (!res) return;
-    const rows = res.data.map(r => [ `<div class="td-name"><strong>${r.Nama_Siswa}</strong></div>`, r.Kelas, `${r.Skor_Literasi||'–'} &nbsp;${UI.badge(r.Kategori_Literasi||'','auto')}`, `${r.Skor_Numerasi||'–'} &nbsp;${UI.badge(r.Kategori_Numerasi||'','auto')}`, r.Gaya_Belajar_Dominan ? r.Gaya_Belajar_Dominan.split('|')[0] : '–', r.Faktor_Eksternal ? r.Faktor_Eksternal.split('|')[0] : '–' ]);
-    main.innerHTML = `<div class="page-header"><h1>Hasil Analisis</h1><p>Rekap asesmen diagnostik seluruh siswa sekolah.</p></div><div class="toolbar"><input type="text" id="cari-sekolah" class="search-input" placeholder="Cari nama..." oninput="UI.searchFilter('cari-sekolah','tbl-sekolah')"></div>${UI.table(['Nama','Kelas','Literasi','Numerasi','Gaya Belajar','Faktor Eksternal'], rows, { tbodyId:'tbl-sekolah' })}${UI.pagination(res.page, res.total, res.limit, 'Admin.raporSekolah')}`;
+  filterProgres() {
+    STATE.view.search = document.getElementById('cari-progres').value.toLowerCase();
+    STATE.view.page = 1;
+    this.renderTabelProgres();
+  },
+  renderTabelProgres(page) {
+    if(page) STATE.view.page = page;
+    const limit = 25; let data = STATE.cache.progres; const s = STATE.view.search;
+    if(s) data = data.filter(u => (u.Nama_Lengkap||'').toLowerCase().includes(s) || (u.ID_Pengguna||'').toLowerCase().includes(s));
+    
+    const total = data.length; const start = (STATE.view.page - 1) * limit; const pageData = data.slice(start, start + limit);
+    const rows = pageData.map(u => [ `<code style="font-size:11.5px;">${u.ID_Pengguna}</code>`, `<div class="td-name"><strong>${u.Nama_Lengkap}</strong></div>`, u.Kelas || '–', u.Progres_Misi || '–', `<div style="display:flex;gap:5px;flex-wrap:wrap;"><button class="btn btn-danger btn-sm" onclick="Admin.resetProgres('${u.ID_Pengguna}', '')">Reset Total</button><button class="btn btn-ghost btn-sm" onclick="Admin.resetProgres('${u.ID_Pengguna}', 'Literasi')">Lit</button><button class="btn btn-ghost btn-sm" onclick="Admin.resetProgres('${u.ID_Pengguna}', 'Numerasi')">Num</button></div>` ]);
+    document.getElementById('tabel-container').innerHTML = UI.table(['ID','Nama','Kelas','Progres','Aksi'], rows) + UI.pagination(STATE.view.page, total, limit, 'Admin.renderTabelProgres');
+  },
+  resetProgres(id, mod) { const label = mod ? `modul ${mod}` : 'semua modul'; UI.confirm('Reset Progres?', `Reset progres ${label} untuk siswa ${id}?`, () => { API.call('resetProgresSiswa', { idSiswa:id, modul:mod }).then(r => { if(r) { UI.toast('Progres berhasil direset.','success'); STATE.cache.progres = null; Router.go('manajemen-progres'); }}); }, { confirmLabel:'Reset', danger:true }); },
+  async raporSekolah() {
+    const main = document.getElementById('main-panel');
+    if(!STATE.cache.raporSekolah) {
+      main.innerHTML = UI.loaderHTML('Memuat rekap analisis sekolah...');
+      const res = await API.call('getRaporKelas', { page: 1, limit: 5000 });
+      if(res) STATE.cache.raporSekolah = res.data || [];
+      else return;
+    }
+    main.innerHTML = `
+      <div class="page-header"><h1>Hasil Analisis</h1><p>Rekap asesmen diagnostik seluruh siswa sekolah.</p></div>
+      <div class="toolbar">
+        <div class="toolbar-left"><input type="text" id="cari-sekolah" class="search-input" placeholder="Cari nama atau kelas..." oninput="Admin.filterRaporSekolah()"></div>
+        <div class="toolbar-right"><button class="btn btn-ghost btn-sm" onclick="STATE.cache.raporSekolah=null; Admin.raporSekolah();">↻ Segarkan</button></div>
+      </div>
+      <div id="tabel-container"></div>
+    `;
+    STATE.view = { page: 1, search: '' };
+    this.renderTabelRaporSekolah();
+  },
+  filterRaporSekolah() {
+    STATE.view.search = document.getElementById('cari-sekolah').value.toLowerCase();
+    STATE.view.page = 1;
+    this.renderTabelRaporSekolah();
+  },
+  renderTabelRaporSekolah(page) {
+    if(page) STATE.view.page = page;
+    const limit = 25; let data = STATE.cache.raporSekolah; const s = STATE.view.search;
+    if(s) data = data.filter(r => (r.Nama_Siswa||'').toLowerCase().includes(s) || (r.Kelas||'').toLowerCase().includes(s));
+    
+    const total = data.length; const start = (STATE.view.page - 1) * limit; const pageData = data.slice(start, start + limit);
+    const rows = pageData.map(r => [ `<div class="td-name"><strong>${r.Nama_Siswa}</strong></div>`, r.Kelas, `${r.Skor_Literasi||'–'} &nbsp;${UI.badge(r.Kategori_Literasi||'','auto')}`, `${r.Skor_Numerasi||'–'} &nbsp;${UI.badge(r.Kategori_Numerasi||'','auto')}`, r.Gaya_Belajar_Dominan ? r.Gaya_Belajar_Dominan.split('|')[0] : '–', r.Faktor_Eksternal ? r.Faktor_Eksternal.split('|')[0] : '–' ]);
+    
+    document.getElementById('tabel-container').innerHTML = UI.table(['Nama','Kelas','Literasi','Numerasi','Gaya Belajar','Faktor Eksternal'], rows) + UI.pagination(STATE.view.page, total, limit, 'Admin.renderTabelRaporSekolah');
   },
   async konfigurasi() {
     const main = document.getElementById('main-panel'); main.innerHTML = UI.loaderHTML(); const conf = await API.call('getKonfigurasi'); if (!conf) return;
