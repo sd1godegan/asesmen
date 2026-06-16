@@ -296,10 +296,11 @@ tbody tr:hover { background: var(--ink-50); }
 .nkog-icon.bkt { background: var(--purple-100); }
 .nkog-icon.kb  { background: var(--green-100); }
 .nkog-icon.ag  { background: #fce7f3; }
+.nkog-icon.fe  { background: #e0f2fe; }
 .nkog-title { font-size:13.5px; font-weight:700; color:var(--ink-900); }
 .nkog-subtitle { font-size:11.5px; color:var(--ink-300); margin-top:1px; }
 .nkog-dominan { font-size: 18px; font-weight: 800; color: var(--green-700); letter-spacing: -.01em; margin-bottom: 8px; line-height: 1.2; }
-.nkog-narasi { font-size: 12.5px; color: var(--ink-500); line-height: 1.6; padding: 10px 12px; background: var(--ink-50); border-radius: var(--radius-sm); border-left: 3px solid var(--green-300); }
+.nkog-narasi { font-size: 12.5px; color: var(--ink-500); line-height: 1.6; padding: 10px 12px; background: var(--ink-50); border-radius: var(--radius-sm); border-left: 3px solid var(--green-300); text-align: justify; }
 .kebiasaan-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-top: 4px; }
 .kebiasaan-chip { display: flex; align-items: center; gap: 7px; padding: 8px 10px; border-radius: var(--radius-sm); font-size: 12.5px; font-weight: 600; border: 1.5px solid var(--ink-100); background: var(--ink-50); color: var(--ink-500); }
 .kebiasaan-chip.dominan { background: var(--green-50); border-color: var(--green-300); color: var(--green-700); }
@@ -419,7 +420,7 @@ tbody tr:hover { background: var(--ink-50); }
       </form>
 
       <div class="login-hint">
-        <strong>Butuh bantuan?</strong> Hubungi guru atau administrator sekolah untuk mendapatkan ID and PIN Anda.
+        <strong>Butuh bantuan?</strong> Hubungi guru atau administrator sekolah untuk mendapatkan ID dan PIN Anda.
       </div>
     </div>
   </div>
@@ -681,7 +682,7 @@ const UI = {
 
 const Router = {
   go(panel) {
-    const validPanels = ['literasi','numerasi','literasi-dasar','numerasi-dasar','gaya-belajar','minat','bakat','7-kebiasaan','agama'];
+    const validPanels = ['literasi','numerasi','literasi-dasar','numerasi-dasar','gaya-belajar','minat','bakat','7-kebiasaan','agama','faktor-eksternal'];
     if (STATE.ujian && STATE.ujian.modul && !validPanels.includes(panel)) {
       UI.confirm('Keluar dari Ujian?', 'Anda sedang mengerjakan ujian. Jawaban akan tersimpan sebagai draf, tetapi Anda harus kembali untuk menyelesaikan.', () => {
         window.removeEventListener('beforeunload', Siswa._warnLeave); Siswa._copotiKeamananUjian();
@@ -717,8 +718,8 @@ const Router = {
     if (peran === 'siswa') {
       const isSiswaBaru = STATE.user.kelas === 'Siswa Baru';
       const daftarModul = isSiswaBaru
-        ? ['Literasi Dasar', 'Numerasi Dasar', 'Gaya Belajar', 'Minat', 'Bakat', '7 Kebiasaan', 'Agama']
-        : ['Literasi', 'Numerasi', 'Gaya Belajar', 'Minat', 'Bakat', '7 Kebiasaan', 'Agama'];
+        ? ['Literasi Dasar', 'Numerasi Dasar', 'Gaya Belajar', 'Minat', 'Bakat', '7 Kebiasaan', 'Agama', 'Faktor Eksternal']
+        : ['Literasi', 'Numerasi', 'Gaya Belajar', 'Minat', 'Bakat', '7 Kebiasaan', 'Agama', 'Faktor Eksternal'];
 
       h += `<div class="nav-section-label">Asesmen Misi</div>`;
       daftarModul.forEach((m, i) => {
@@ -727,7 +728,7 @@ const Router = {
         h += navItem(m.toLowerCase().replace(/\s/g, '-'), m, locked, done);
       });
 
-      const totalModul = 7;
+      const totalModul = 8;
       const semuaSelesai = prog.length >= totalModul;
       h += `<div class="nav-section-label">Hasil</div>`;
       h += navItem('hasil-siswa', 'Hasil Belajar', !semuaSelesai, false);
@@ -783,6 +784,7 @@ const Siswa = {
       case 'bakat': this.konfirmasiModul('Bakat'); break;
       case '7-kebiasaan': this.konfirmasiModul('7 Kebiasaan'); break;
       case 'agama': this.konfirmasiModul('Agama'); break;
+      case 'faktor-eksternal': this.konfirmasiModul('Faktor Eksternal'); break;
       case 'hasil-siswa': this.hasil(); break;
       case 'latihan-literasi': this.latihan('Literasi'); break;
       default: Router.go('beranda');
@@ -801,7 +803,8 @@ const Siswa = {
           { key: 'Minat', label: 'Minat', panel: 'minat' },
           { key: 'Bakat', label: 'Bakat', panel: 'bakat' },
           { key: '7 Kebiasaan', label: '7 Kebiasaan', panel: '7-kebiasaan' },
-          { key: 'Agama', label: 'Agama', panel: 'agama' }
+          { key: 'Agama', label: 'Agama', panel: 'agama' },
+          { key: 'Faktor Eksternal', label: 'Faktor Eksternal', panel: 'faktor-eksternal' }
         ]
       : [
           { key: 'Literasi', label: 'Literasi', panel: 'literasi' },
@@ -810,7 +813,8 @@ const Siswa = {
           { key: 'Minat', label: 'Minat', panel: 'minat' },
           { key: 'Bakat', label: 'Bakat', panel: 'bakat' },
           { key: '7 Kebiasaan', label: '7 Kebiasaan', panel: '7-kebiasaan' },
-          { key: 'Agama', label: 'Agama', panel: 'agama' }
+          { key: 'Agama', label: 'Agama', panel: 'agama' },
+          { key: 'Faktor Eksternal', label: 'Faktor Eksternal', panel: 'faktor-eksternal' }
         ];
 
     const total = moduls.length;
@@ -835,7 +839,7 @@ const Siswa = {
     const statLit = rapor.Skor_Literasi != null ? `<div class="stat-value" style="font-size:26px;">${rapor.Skor_Literasi}</div><div style="margin-top:6px;">${UI.badge(rapor.Kategori_Literasi||'','auto')}</div>` : `<div class="stat-sub">Belum dikerjakan</div>`;
     const statNum = rapor.Skor_Numerasi != null ? `<div class="stat-value" style="font-size:26px;">${rapor.Skor_Numerasi}</div><div style="margin-top:6px;">${UI.badge(rapor.Kategori_Numerasi||'','auto')}</div>` : `<div class="stat-sub">Belum dikerjakan</div>`;
     const gb = parseField(rapor.Gaya_Belajar_Dominan); const statNK = gb[0] !== '–' ? `<div class="stat-value" style="font-size:18px;letter-spacing:-.01em;">${gb[0]}</div><div class="stat-sub">Gaya Belajar Dominan</div>` : `<div class="stat-sub">Belum dikerjakan</div>`;
-    el.innerHTML = `<div class="beranda-stats-section"><div class="section-title">Ringkasan Hasil Asesmen</div><div class="stat-grid stat-grid-3"><div class="stat-card green"><div class="stat-label">Literasi</div>${statLit}</div><div class="stat-card green"><div class="stat-label">Numerasi</div>${statNum}</div><div class="stat-card"><div class="stat-label">Nonkognitif</div>${statNK}</div></div>${rapor.Deskripsi_Literasi || rapor.Deskripsi_Numerasi ? `<div class="card"><div class="card-title" style="font-size:14px;">Catatan Diagnostik</div>${rapor.Deskripsi_Literasi ? `<p style="font-size:13px;color:var(--ink-500);margin-bottom:8px;"><strong>Literasi:</strong> Ananda ${rapor.Nama_Siswa || STATE.user.nama} ${rapor.Deskripsi_Literasi.charAt(0).toLowerCase()+rapor.Deskripsi_Literasi.slice(1)}</p>` : ''}${rapor.Deskripsi_Numerasi ? `<p style="font-size:13px;color:var(--ink-500);"><strong>Numerasi:</strong> Ananda ${rapor.Nama_Siswa || STATE.user.nama} ${rapor.Deskripsi_Numerasi.charAt(0).toLowerCase()+rapor.Deskripsi_Numerasi.slice(1)}</p>` : ''}</div>` : ''}</div>`;
+    el.innerHTML = `<div class="beranda-stats-section"><div class="section-title">Ringkasan Hasil Asesmen</div><div class="stat-grid stat-grid-3"><div class="stat-card green"><div class="stat-label">Literasi</div>${statLit}</div><div class="stat-card green"><div class="stat-label">Numerasi</div>${statNum}</div><div class="stat-card"><div class="stat-label">Nonkognitif</div>${statNK}</div></div>${rapor.Deskripsi_Literasi || rapor.Deskripsi_Numerasi ? `<div class="card"><div class="card-title" style="font-size:14px;">Catatan Diagnostik</div>${rapor.Deskripsi_Literasi ? `<p style="font-size:13px;color:var(--ink-500);margin-bottom:8px;text-align:justify;"><strong>Literasi:</strong> Ananda ${rapor.Nama_Siswa || STATE.user.nama} ${rapor.Deskripsi_Literasi.charAt(0).toLowerCase()+rapor.Deskripsi_Literasi.slice(1)}</p>` : ''}${rapor.Deskripsi_Numerasi ? `<p style="font-size:13px;color:var(--ink-500);text-align:justify;"><strong>Numerasi:</strong> Ananda ${rapor.Nama_Siswa || STATE.user.nama} ${rapor.Deskripsi_Numerasi.charAt(0).toLowerCase()+rapor.Deskripsi_Numerasi.slice(1)}</p>` : ''}</div>` : ''}</div>`;
   },
   latihan(modul) {
     const main = document.getElementById('main-panel');
@@ -869,13 +873,12 @@ const Siswa = {
     const soal = await API.call('getSoalSiswa', { kelas: STATE.user.kelas, modul });
     if (!soal || soal.length === 0) { UI.toast('Soal belum tersedia.', 'warning'); Router.go('beranda'); return; }
 
-    const isNonKognitif = ['Gaya Belajar', 'Minat', 'Bakat', '7 Kebiasaan', 'Agama'].includes(modul);
+    const isNonKognitif = ['Gaya Belajar', 'Minat', 'Bakat', '7 Kebiasaan', 'Agama', 'Faktor Eksternal'].includes(modul);
 
     if (isNonKognitif) {
       const groups = [];
       let indexTabel = 1;
       
-      // Kelompokkan secara ketat berdasarkan kolom dimensi (A1, A2, A3, dll.)
       const dimensiMap = {};
       soal.forEach(s => {
         const d = s.dimensi || 'Umum';
@@ -883,7 +886,6 @@ const Siswa = {
         dimensiMap[d].push(s);
       });
       
-      // Untuk tiap dimensi, potong dinamis menjadi maksimal 3 soal per tabel halaman
       Object.keys(dimensiMap).forEach(d => {
         const questionsInDim = dimensiMap[d];
         for (let i = 0; i < questionsInDim.length; i += 3) {
@@ -1065,17 +1067,30 @@ const Siswa = {
     const labelLit = data.Kelas === 'Siswa Baru' ? 'Literasi Dasar' : 'Literasi';
     const labelNum = data.Kelas === 'Siswa Baru' ? 'Numerasi Dasar' : 'Numerasi';
 
-    main.innerHTML = `<div class="page-header"><h1>Rapor Diagnostik</h1><p>Hasil pemetaan kompetensi dan karakter ${data.Nama_Siswa || STATE.user.nama}</p></div><div class="card"><div class="card-header"><h3>Asesmen Kompetensi Minimum (AKM)</h3><button class="btn btn-primary btn-sm" onclick="Siswa.exportPDF()">Unduh PDF</button></div><div class="rapor-akm-grid"><div class="rapor-akm-card"><h4>${labelLit}</h4><div class="rapor-score">${data.Skor_Literasi || '–'}</div><div style="margin-top:10px;">${UI.badge(data.Kategori_Literasi || '–', 'auto')}</div><div class="rapor-desc">${data.Deskripsi_Literasi ? 'Ananda ' + (data.Nama_Siswa || STATE.user.nama) + ' ' + data.Deskripsi_Literasi.charAt(0).toLowerCase() + data.Deskripsi_Literasi.slice(1) : 'Deskripsi belum tersedia.'}</div></div><div class="rapor-akm-card"><h4>${labelNum}</h4><div class="rapor-score">${data.Skor_Numerasi || '–'}</div><div style="margin-top:10px;">${UI.badge(data.Kategori_Numerasi || '–', 'auto')}</div><div class="rapor-desc">${data.Deskripsi_Numerasi ? 'Ananda ' + (data.Nama_Siswa || STATE.user.nama) + ' ' + data.Deskripsi_Numerasi.charAt(0).toLowerCase() + data.Deskripsi_Numerasi.slice(1) : 'Deskripsi belum tersedia.'}</div></div></div></div><div class="card"><div class="card-title">Profil Nonkognitif &amp; Karakter</div><div class="nkog-grid">${nkogCard('gb', '👁️', 'Gaya Belajar', 'Cara terbaik siswa menyerap informasi', data.Gaya_Belajar_Dominan)} ${nkogCard('mnt', '🎯', 'Minat', 'Fokus dan keterlibatan siswa dalam aktivitas', data.Minat_Dominan)} ${nkogCard('bkt', '⭐', 'Bakat', 'Kecenderungan kemampuan alami siswa', data.Bakat_Dominan)} ${nkogCard('ag', '🕌', 'Pembiasaan Agama','Praktik keagamaan dalam keseharian', data.Pembiasaan_Agama)} ${kebiasaanCard}</div></div>`;
+    main.innerHTML = `<div class="page-header"><h1>Rapor Diagnostik</h1><p>Hasil pemetaan kompetensi dan karakter ${data.Nama_Siswa || STATE.user.nama}</p></div><div class="card"><div class="card-header"><h3>Asesmen Kompetensi Minimum (AKM)</h3><button class="btn btn-primary btn-sm" onclick="Siswa.exportPDF()">Unduh PDF</button></div><div class="rapor-akm-grid"><div class="rapor-akm-card"><h4>${labelLit}</h4><div class="rapor-score">${data.Skor_Literasi || '–'}</div><div style="margin-top:10px;">${UI.badge(data.Kategori_Literasi || '–', 'auto')}</div><div class="rapor-desc">${data.Deskripsi_Literasi ? 'Ananda ' + (data.Nama_Siswa || STATE.user.nama) + ' ' + data.Deskripsi_Literasi.charAt(0).toLowerCase() + data.Deskripsi_Literasi.slice(1) : 'Deskripsi belum tersedia.'}</div></div><div class="rapor-akm-card"><h4>${labelNum}</h4><div class="rapor-score">${data.Skor_Numerasi || '–'}</div><div style="margin-top:10px;">${UI.badge(data.Kategori_Numerasi || '–', 'auto')}</div><div class="rapor-desc">${data.Deskripsi_Numerasi ? 'Ananda ' + (data.Nama_Siswa || STATE.user.nama) + ' ' + data.Deskripsi_Numerasi.charAt(0).toLowerCase() + data.Deskripsi_Numerasi.slice(1) : 'Deskripsi belum tersedia.'}</div></div></div></div><div class="card"><div class="card-title">Profil Nonkognitif &amp; Karakter</div><div class="nkog-grid">${nkogCard('gb', '👁️', 'Gaya Belajar', 'Cara terbaik siswa menyerap informasi', data.Gaya_Belajar_Dominan)} ${nkogCard('mnt', '🎯', 'Minat', 'Fokus dan keterlibatan siswa dalam aktivitas', data.Minat_Dominan)} ${nkogCard('bkt', '⭐', 'Bakat', 'Kecenderungan kemampuan alami siswa', data.Bakat_Dominan)} ${nkogCard('ag', '🕌', 'Pembiasaan Agama','Praktik keagamaan dalam keseharian', data.Pembiasaan_Agama)} ${data.Faktor_Eksternal ? nkogCard('fe', '🏡', 'Faktor Eksternal', 'Dukungan lingkungan dan fasilitas belajar', data.Faktor_Eksternal) : ''} ${kebiasaanCard}</div></div>`;
   },
   exportPDF() {
     const d = STATE.raporSiswa; if (!d) return; const thn = STATE.config['Tahun_Ajaran_Aktif'] || '-'; 
     
-    const parse = t => {
+    const parse = (t) => {
       if (!t) return '-';
       const p = t.split('|');
-      if (p[1]) return `${p[0]} — Ananda ${d.Nama_Siswa || STATE.user.nama} ${p[1].charAt(0).toLowerCase() + p[1].slice(1)}`;
+      if (p[1]) return `${p[0]}\nAnanda ${d.Nama_Siswa || STATE.user.nama} ${p[1].charAt(0).toLowerCase() + p[1].slice(1)}`;
       return p[0];
     };
+
+    const nkogData = [
+      ['Gaya Belajar Dominan', d.Gaya_Belajar_Dominan],
+      ['Minat Utama', d.Minat_Dominan],
+      ['Kecenderungan Bakat', d.Bakat_Dominan],
+      ['Pembiasaan Agama', d.Pembiasaan_Agama],
+      ['Faktor Eksternal', d.Faktor_Eksternal]
+    ].filter(item => item[1]);
+
+    const nkogRows = nkogData.map(item => [
+      { text: item[0], bold: true, fontSize: 10, color: '#2d4d38', margin: [0, 4, 0, 4] },
+      { text: parse(item[1]), fontSize: 10, margin: [0, 4, 0, 4], alignment: 'justify', lineHeight: 1.3 }
+    ]);
 
     const KEBIASAAN_LIST = ['Bangun Pagi','Beribadah','Berolahraga','Makan Sehat & Bergizi','Gemar Belajar','Bermasyarakat','Tidur Cepat'];
     const kbDominans = (d.Karakter_7_Kebiasaan||'').split('|')[0].split(' & ').map(s => s.trim());
@@ -1086,16 +1101,25 @@ const Siswa = {
       pageSize: 'A4', pageMargins: [45, 50, 45, 50],
       content: [
         { text: 'RAPOR ASESMEN DIAGNOSTIK', style:'header', alignment:'center' },
-        { text: `SD Negeri 1 Godegan · Tahun Ajaran ${thn}`, alignment:'center', fontSize:10, color:'#666', margin:[0,4,0,28] },
-        { table:{ widths:[100,8,'*'], body:[ [{text:'Nama Siswa',bold:true},':',(d.Nama_Siswa||'-')], [{text:'Kelas', bold:true},':',(d.Kelas||'-')] ]}, layout:'noBorders', margin:[0,0,0,28] },
-        { text:`A.  ASESMEN ${titleLit}`, style:'subheader' }, { text:`Skor: ${d.Skor_Literasi||'-'}  |  Kategori: ${d.Kategori_Literasi||'-'}`, bold:true, margin:[15,6,0,6], fontSize:12 },
-        { text: d.Deskripsi_Literasi ? `Ananda ${d.Nama_Siswa} ${d.Deskripsi_Literasi.charAt(0).toLowerCase()+d.Deskripsi_Literasi.slice(1)}` : '-', margin:[15,0,0,20], fontSize:11 },
-        { text:`B.  ASESMEN ${titleNum}`, style:'subheader' }, { text:`Skor: ${d.Skor_Numerasi||'-'}  |  Kategori: ${d.Kategori_Numerasi||'-'}`, bold:true, margin:[15,6,0,6], fontSize:12 },
-        { text: d.Deskripsi_Numerasi ? `Ananda ${d.Nama_Siswa} ${d.Deskripsi_Numerasi.charAt(0).toLowerCase()+d.Deskripsi_Numerasi.slice(1)}` : '-', margin:[15,0,0,20], fontSize:11 },
-        { text:'C.  PROFIL NONKOGNITIF', style:'subheader' }, { ul:[ `Gaya Belajar Dominan: ${parse(d.Gaya_Belajar_Dominan)}`, `Minat Utama: ${parse(d.Minat_Dominan)}`, `Kecenderungan Bakat: ${parse(d.Bakat_Dominan)}`, `Pembiasaan Agama: ${parse(d.Pembiasaan_Agama)}` ], margin:[15,8,0,16], fontSize:11 },
-        { text:'D.  7 KEBIASAAN', style:'subheader' }, { text:`Kebiasaan Dominan: ${kbDominans.join(', ')}`, bold:true, margin:[15,6,0,8], fontSize:11 },
-        { table: { widths: ['*', 60], body: [ [{text:'Kebiasaan', bold:true, fontSize:10}, {text:'Status', bold:true, fontSize:10, alignment:'center'}], ...KEBIASAAN_LIST.map(k => { const isDom = kbDominans.some(d2 => d2.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(d2.toLowerCase())); return [{ text:k, fontSize:10 }, { text: isDom ? '✓ Dominan' : '–', fontSize:10, alignment:'center', color: isDom ? '#2d4d38' : '#8ea396' }]; }) ] }, layout:'lightHorizontalLines', margin:[15,0,0,0] }
-      ], styles: { header: { fontSize:18, bold:true }, subheader: { fontSize:13, bold:true, marginTop:14, marginBottom:4 } }
+        { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 505, y2: 0, lineWidth: 1, lineColor: '#2d4d38' }], margin: [0, 8, 0, 8] },
+        { text: `SD Negeri 1 Godegan · Tahun Ajaran ${thn}`, alignment:'center', fontSize:10, color:'#666', margin:[0,0,0,24] },
+        { table:{ widths:[100,8,'*'], body:[ [{text:'Nama Siswa',bold:true},':',(d.Nama_Siswa||'-')], [{text:'Kelas', bold:true},':',(d.Kelas||'-')] ]}, layout:'noBorders', margin:[0,0,0,24] },
+        
+        { text:`A.  ASESMEN ${titleLit}`, style:'subheader' },
+        { text:`Skor: ${d.Skor_Literasi||'-'}  |  Kategori: ${d.Kategori_Literasi||'-'}`, bold:true, margin:[15,4,0,6], fontSize:11, color: '#2d4d38' },
+        { text: d.Deskripsi_Literasi ? `Ananda ${d.Nama_Siswa} ${d.Deskripsi_Literasi.charAt(0).toLowerCase()+d.Deskripsi_Literasi.slice(1)}` : '-', margin:[15,0,0,16], fontSize:10, alignment: 'justify', lineHeight: 1.3 },
+        
+        { text:`B.  ASESMEN ${titleNum}`, style:'subheader' },
+        { text:`Skor: ${d.Skor_Numerasi||'-'}  |  Kategori: ${d.Kategori_Numerasi||'-'}`, bold:true, margin:[15,4,0,6], fontSize:11, color: '#2d4d38' },
+        { text: d.Deskripsi_Numerasi ? `Ananda ${d.Nama_Siswa} ${d.Deskripsi_Numerasi.charAt(0).toLowerCase()+d.Deskripsi_Numerasi.slice(1)}` : '-', margin:[15,0,0,16], fontSize:10, alignment: 'justify', lineHeight: 1.3 },
+        
+        { text:'C.  PROFIL NONKOGNITIF', style:'subheader', margin:[0,8,0,8] },
+        { table: { widths: [120, '*'], body: nkogRows }, layout: 'lightHorizontalLines', margin: [15, 0, 0, 16] },
+        
+        { text:'D.  7 KEBIASAAN', style:'subheader' },
+        { text:`Kebiasaan Dominan: ${kbDominans.join(', ')}`, bold:true, margin:[15,6,0,8], fontSize:10 },
+        { table: { widths: ['*', 70], body: [ [{text:'Daftar Kebiasaan', bold:true, fontSize:10, fillColor: '#f3f9f5'}, {text:'Status', bold:true, fontSize:10, alignment:'center', fillColor: '#f3f9f5'}], ...KEBIASAAN_LIST.map(k => { const isDom = kbDominans.some(d2 => d2.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(d2.toLowerCase())); return [{ text:k, fontSize:10, margin: [0, 2, 0, 2] }, { text: isDom ? '✓ Dominan' : '–', fontSize:10, alignment:'center', color: isDom ? '#2d4d38' : '#8ea396', margin: [0, 2, 0, 2] }]; }) ] }, layout:{ hLineWidth: () => 0.5, vLineWidth: () => 0, hLineColor: () => '#dce7e0' }, margin:[15,0,0,0] }
+      ], styles: { header: { fontSize:16, bold:true, letterSpacing: 1 }, subheader: { fontSize:12, bold:true, marginTop:10, marginBottom:4, color: '#1a2e22' } }
     }).download(`Rapor_${d.Nama_Siswa || 'Siswa'}.pdf`);
   }
 };
@@ -1134,8 +1158,8 @@ const Guru = {
   },
   async raporKelas(page = 1) {
     const main = document.getElementById('main-panel'); main.innerHTML = UI.loaderHTML(); const res = await API.call('getRaporKelas', { page, limit:20 }); if (!res) return;
-    const rows = res.data.map(r => [ `<div class="td-name"><strong>${r.Nama_Siswa}</strong></div>`, r.Kelas, `${r.Skor_Literasi||'–'} &nbsp;${UI.badge(r.Kategori_Literasi||'','auto')}`, `${r.Skor_Numerasi||'–'} &nbsp;${UI.badge(r.Kategori_Numerasi||'','auto')}`, r.Gaya_Belajar_Dominan ? r.Gaya_Belajar_Dominan.split('|')[0] : '–', r.Minat_Dominan ? r.Minat_Dominan.split('|')[0] : '–' ]);
-    main.innerHTML = `<div class="page-header"><h1>Rapor Kelas</h1><p>Data hasil asesmen diagnostik seluruh siswa di kelas Anda.</p></div><div class="toolbar"><div class="toolbar-left"><input type="text" id="cari-rapor" class="search-input" placeholder="Cari nama siswa..." oninput="UI.searchFilter('cari-rapor','tbl-rapor')"></div></div>${UI.table(['Nama','Kelas','Literasi','Numerasi','Gaya Belajar','Minat'], rows, { tbodyId:'tbl-rapor' })}${UI.pagination(res.page, res.total, res.limit, 'Guru.raporKelas')}`;
+    const rows = res.data.map(r => [ `<div class="td-name"><strong>${r.Nama_Siswa}</strong></div>`, r.Kelas, `${r.Skor_Literasi||'–'} &nbsp;${UI.badge(r.Kategori_Literasi||'','auto')}`, `${r.Skor_Numerasi||'–'} &nbsp;${UI.badge(r.Kategori_Numerasi||'','auto')}`, r.Gaya_Belajar_Dominan ? r.Gaya_Belajar_Dominan.split('|')[0] : '–', r.Faktor_Eksternal ? r.Faktor_Eksternal.split('|')[0] : '–' ]);
+    main.innerHTML = `<div class="page-header"><h1>Rapor Kelas</h1><p>Data hasil asesmen diagnostik seluruh siswa di kelas Anda.</p></div><div class="toolbar"><div class="toolbar-left"><input type="text" id="cari-rapor" class="search-input" placeholder="Cari nama siswa..." oninput="UI.searchFilter('cari-rapor','tbl-rapor')"></div></div>${UI.table(['Nama','Kelas','Literasi','Numerasi','Gaya Belajar','Faktor Eksternal'], rows, { tbodyId:'tbl-rapor' })}${UI.pagination(res.page, res.total, res.limit, 'Guru.raporKelas')}`;
   }
 };
 
@@ -1162,7 +1186,7 @@ const Admin = {
       </div>`
     ]);
 
-    main.innerHTML = `<div class="page-header"><h1>Data Pengguna</h1><p>Kelola akun siswa, guru, and administrator.</p></div><div class="toolbar"><div class="toolbar-left"><input type="text" id="cari-user" class="search-input" placeholder="Cari nama atau ID..." oninput="UI.searchFilter('cari-user','tbl-user')"></div><div class="toolbar-right"><input type="file" id="file-user" accept=".xlsx,.xls" class="file-input-hidden" onchange="Admin.uploadExcel()"><button class="btn btn-secondary btn-sm" onclick="Admin.downloadTemplate()">Unduh Template</button><button class="btn btn-secondary btn-sm" onclick="document.getElementById('file-user').click()">Unggah Excel</button><button class="btn btn-primary btn-sm" onclick="Admin.tambahForm()">+ Tambah</button></div></div>${UI.table(['ID','Nama / PIN','Peran','Kelas','Status','Aksi'], rows, { tbodyId:'tbl-user' })}${UI.pagination(res.page, res.total, res.limit, 'Admin.manajemenUser')}`;
+    main.innerHTML = `<div class="page-header"><h1>Data Pengguna</h1><p>Kelola akun siswa, guru, dan administrator.</p></div><div class="toolbar"><div class="toolbar-left"><input type="text" id="cari-user" class="search-input" placeholder="Cari nama atau ID..." oninput="UI.searchFilter('cari-user','tbl-user')"></div><div class="toolbar-right"><input type="file" id="file-user" accept=".xlsx,.xls" class="file-input-hidden" onchange="Admin.uploadExcel()"><button class="btn btn-secondary btn-sm" onclick="Admin.downloadTemplate()">Unduh Template</button><button class="btn btn-secondary btn-sm" onclick="document.getElementById('file-user').click()">Unggah Excel</button><button class="btn btn-primary btn-sm" onclick="Admin.tambahForm()">+ Tambah</button></div></div>${UI.table(['ID','Nama / PIN','Peran','Kelas','Status','Aksi'], rows, { tbodyId:'tbl-user' })}${UI.pagination(res.page, res.total, res.limit, 'Admin.manajemenUser')}`;
 
     document.getElementById('tbl-user').addEventListener('click', e => {
       const btn = e.target.closest('.action-btn'); if (!btn) return;
@@ -1172,7 +1196,7 @@ const Admin = {
   },
   tambahForm() { UI.prompt('Tambah Pengguna Baru', [ { label:'Nama Lengkap', placeholder:'Nama lengkap' }, { label:'Peran', type:'select', options:['Siswa','Guru','Admin'] }, { label:'Kelas', placeholder:'Contoh: Kelas 5A', required:false } ], vals => { API.call('tambahPenggunaBatch', { dataArray: [{ nama:vals[0], peran:vals[1], kelas:vals[2]||'Siswa Baru' }] }).then(r => { if(r) { UI.toast('Pengguna berhasil ditambahkan.','success'); Router.go('manajemen-user'); }}); }); },
   editForm(id, nama, kelas) { UI.prompt('Edit Pengguna', [ { label:'Nama Lengkap', value:nama }, { label:'Kelas', value:kelas, required:false } ], vals => { API.call('editPengguna', { idTarget:id, dataBaru:{ nama:vals[0], kelas:vals[1] } }).then(r => { if(r) { UI.toast('Data berhasil diperbarui.','success'); Router.go('manajemen-user'); }}); }); },
-  hapusUser(id) { UI.confirm('Nonaktifkan Akun?', `Akun ${id} akan dinonaktifkan and tidak bisa login.`, () => { API.call('hapusPengguna', { idTarget:id }).then(r => { if(r) { UI.toast('Akun dinonaktifkan.','success'); Router.go('manajemen-user'); }}); }, { confirmLabel:'Nonaktifkan', danger:true }); },
+  hapusUser(id) { UI.confirm('Nonaktifkan Akun?', `Akun ${id} akan dinonaktifkan dan tidak bisa login.`, () => { API.call('hapusPengguna', { idTarget:id }).then(r => { if(r) { UI.toast('Akun dinonaktifkan.','success'); Router.go('manajemen-user'); }}); }, { confirmLabel:'Nonaktifkan', danger:true }); },
   downloadTemplate() { const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ Nama_Lengkap:'Contoh Siswa', Peran:'Siswa', Kelas:'Kelas 5A' }]), 'Template'); XLSX.writeFile(wb, 'Template_Pengguna.xlsx'); },
   async uploadExcel() { const f = document.getElementById('file-user').files[0]; if (!f) return; const buf = await f.arrayBuffer(); const wb = XLSX.read(new Uint8Array(buf), { type:'array' }); const ws = wb.Sheets[wb.SheetNames[0]]; const json = XLSX.utils.sheet_to_json(ws); const data = json.map(r => ({ nama: r.Nama_Lengkap||r.nama, peran: r.Peran||r.peran||'Siswa', kelas: r.Kelas||r.kelas||'Siswa Baru' })); const res = await API.call('tambahPenggunaBatch', { dataArray:data }); if (res) { UI.toast(`${data.length} pengguna berhasil diunggah.`, 'success'); Router.go('manajemen-user'); } },
   async bankSoal(page = 1) {
@@ -1186,7 +1210,7 @@ const Admin = {
       </div>`
     ]);
 
-    main.innerHTML = `<div class="page-header"><h1>Bank Soal</h1><p>Kelola soal asesmen untuk semua modul and kelas.</p></div><div class="toolbar"><div class="toolbar-left"><input type="text" id="cari-soal" class="search-input" placeholder="Cari ID atau pertanyaan..." oninput="UI.searchFilter('cari-soal','tbl-soal')"></div><div class="toolbar-right"><input type="file" id="file-soal" accept=".xlsx,.xls" class="file-input-hidden" onchange="Admin.uploadSoalExcel()"><button class="btn btn-secondary btn-sm" onclick="Admin.cetakSoalPDFForm()">🖨️ Cetak PDF</button><button class="btn btn-secondary btn-sm" onclick="Admin.downloadTemplateSoal()">Template</button><button class="btn btn-secondary btn-sm" onclick="document.getElementById('file-soal').click()">Unggah</button><button class="btn btn-primary btn-sm" onclick="Admin.tambahSoalForm()">+ Soal</button><button class="btn btn-ghost btn-sm" onclick="API.call('refreshCache').then(r=>r&&UI.toast('Cache dibersihkan.','success'))">Refresh Cache</button></div></div>${UI.table(['ID Soal','Sasaran','Pertanyaan','Tipe','Status','Aksi'], rows, { tbodyId:'tbl-soal' })}${UI.pagination(res.page, res.total, res.limit, 'Admin.bankSoal')}`;
+    main.innerHTML = `<div class="page-header"><h1>Bank Soal</h1><p>Kelola soal asesmen untuk semua modul dan kelas.</p></div><div class="toolbar"><div class="toolbar-left"><input type="text" id="cari-soal" class="search-input" placeholder="Cari ID atau pertanyaan..." oninput="UI.searchFilter('cari-soal','tbl-soal')"></div><div class="toolbar-right"><input type="file" id="file-soal" accept=".xlsx,.xls" class="file-input-hidden" onchange="Admin.uploadSoalExcel()"><button class="btn btn-secondary btn-sm" onclick="Admin.cetakSoalPDFForm()">🖨️ Cetak PDF</button><button class="btn btn-secondary btn-sm" onclick="Admin.downloadTemplateSoal()">Template</button><button class="btn btn-secondary btn-sm" onclick="document.getElementById('file-soal').click()">Unggah</button><button class="btn btn-primary btn-sm" onclick="Admin.tambahSoalForm()">+ Soal</button><button class="btn btn-ghost btn-sm" onclick="API.call('refreshCache').then(r=>r&&UI.toast('Cache dibersihkan.','success'))">Refresh Cache</button></div></div>${UI.table(['ID Soal','Sasaran','Pertanyaan','Tipe','Status','Aksi'], rows, { tbodyId:'tbl-soal' })}${UI.pagination(res.page, res.total, res.limit, 'Admin.bankSoal')}`;
 
     document.getElementById('tbl-soal').addEventListener('click', e => {
       const btn = e.target.closest('.action-btn'); if (!btn) return;
@@ -1194,7 +1218,7 @@ const Admin = {
       if (btn.dataset.action === 'hapus') this.hapusSoal(btn.dataset.id);
     });
   },
-  tambahSoalForm() { UI.prompt('Tambah Soal', [ { label:'ID Soal', placeholder:'Contoh: LIT-001' }, { label:'Modul', type:'select', options:['Literasi','Numerasi','Gaya Belajar','Minat','Bakat','7 Kebiasaan','Agama','Literasi Dasar','Numerasi Dasar'] }, { label:'Pertanyaan', placeholder:'Tulis pertanyaan' } ], vals => { API.call('tambahSoal', { dataSoal: { idSoal:vals[0], kelas:'Semua Kelas', modul:vals[1], dimensi:'L1', tipe:'PG', pertanyaan:vals[2], opsi:'A|B|C', kunci:'A', bobot:1, status:'Aktif' }}).then(r => { if(r) { UI.toast('Soal ditambahkan.','success'); Router.go('bank-soal'); }}); }); },
+  tambahSoalForm() { UI.prompt('Tambah Soal', [ { label:'ID Soal', placeholder:'Contoh: LIT-001' }, { label:'Modul', type:'select', options:['Literasi','Numerasi','Gaya Belajar','Minat','Bakat','7 Kebiasaan','Agama','Faktor Eksternal','Literasi Dasar','Numerasi Dasar'] }, { label:'Pertanyaan', placeholder:'Tulis pertanyaan' } ], vals => { API.call('tambahSoal', { dataSoal: { idSoal:vals[0], kelas:'Semua Kelas', modul:vals[1], dimensi:'L1', tipe:'PG', pertanyaan:vals[2], opsi:'A|B|C', kunci:'A', bobot:1, status:'Aktif' }}).then(r => { if(r) { UI.toast('Soal ditambahkan.','success'); Router.go('bank-soal'); }}); }); },
   toggleSoal(modul, kelas, status) { UI.confirm(`Ubah Status ke "${status}"?`, `Semua soal modul ${modul} akan diubah statusnya.`, () => { API.call('toggleStatusSoalBatch', { modul, kelas, statusBaru:status }).then(r => { if(r) { UI.toast(`Status diubah ke ${status}.`,'success'); Router.go('bank-soal'); }}); }, { confirmLabel:'Ubah' }); },
   hapusSoal(id) { UI.confirm('Hapus Soal?', `Soal ${id} akan dihapus permanen.`, () => { API.call('hapusSoal', { idSoal:id }).then(r => { if(r) { UI.toast('Soal dihapus.','success'); Router.go('bank-soal'); }}); }, { confirmLabel:'Hapus Permanen', danger:true }); },
   downloadTemplateSoal() { const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet([{ idSoal:'LIT-001', kelas:'Semua', modul:'Literasi', dimensi:'L1', tipe:'PG', pertanyaan:'...', opsi:'A|B|C', kunci:'A', bobot:1, status:'Aktif' }]), 'Template'); XLSX.writeFile(wb, 'Template_Soal.xlsx'); },
@@ -1211,16 +1235,16 @@ const Admin = {
   resetProgres(id, mod) { const label = mod ? `modul ${mod}` : 'semua modul'; UI.confirm('Reset Progres?', `Reset progres ${label} untuk siswa ${id}?`, () => { API.call('resetProgresSiswa', { idSiswa:id, modul:mod }).then(r => { if(r) { UI.toast('Progres berhasil direset.','success'); Router.go('manajemen-progres'); }}); }, { confirmLabel:'Reset', danger:true }); },
   async raporSekolah(page = 1) {
     const main = document.getElementById('main-panel'); main.innerHTML = UI.loaderHTML(); const res = await API.call('getRaporKelas', { page, limit:25 }); if (!res) return;
-    const rows = res.data.map(r => [ `<div class="td-name"><strong>${r.Nama_Siswa}</strong></div>`, r.Kelas, `${r.Skor_Literasi||'–'} &nbsp;${UI.badge(r.Kategori_Literasi||'','auto')}`, `${r.Skor_Numerasi||'–'} &nbsp;${UI.badge(r.Kategori_Numerasi||'','auto')}`, r.Gaya_Belajar_Dominan ? r.Gaya_Belajar_Dominan.split('|')[0] : '–', r.Minat_Dominan ? r.Minat_Dominan.split('|')[0] : '–', r.Bakat_Dominan ? r.Bakat_Dominan.split('|')[0] : '–' ]);
-    main.innerHTML = `<div class="page-header"><h1>Hasil Analisis</h1><p>Rekap asesmen diagnostik seluruh siswa sekolah.</p></div><div class="toolbar"><input type="text" id="cari-sekolah" class="search-input" placeholder="Cari nama..." oninput="UI.searchFilter('cari-sekolah','tbl-sekolah')"></div>${UI.table(['Nama','Kelas','Literasi','Numerasi','Gaya Belajar','Minat','Bakat'], rows, { tbodyId:'tbl-sekolah' })}${UI.pagination(res.page, res.total, res.limit, 'Admin.raporSekolah')}`;
+    const rows = res.data.map(r => [ `<div class="td-name"><strong>${r.Nama_Siswa}</strong></div>`, r.Kelas, `${r.Skor_Literasi||'–'} &nbsp;${UI.badge(r.Kategori_Literasi||'','auto')}`, `${r.Skor_Numerasi||'–'} &nbsp;${UI.badge(r.Kategori_Numerasi||'','auto')}`, r.Gaya_Belajar_Dominan ? r.Gaya_Belajar_Dominan.split('|')[0] : '–', r.Faktor_Eksternal ? r.Faktor_Eksternal.split('|')[0] : '–' ]);
+    main.innerHTML = `<div class="page-header"><h1>Hasil Analisis</h1><p>Rekap asesmen diagnostik seluruh siswa sekolah.</p></div><div class="toolbar"><input type="text" id="cari-sekolah" class="search-input" placeholder="Cari nama..." oninput="UI.searchFilter('cari-sekolah','tbl-sekolah')"></div>${UI.table(['Nama','Kelas','Literasi','Numerasi','Gaya Belajar','Faktor Eksternal'], rows, { tbodyId:'tbl-sekolah' })}${UI.pagination(res.page, res.total, res.limit, 'Admin.raporSekolah')}`;
   },
   async konfigurasi() {
     const main = document.getElementById('main-panel'); main.innerHTML = UI.loaderHTML(); const conf = await API.call('getKonfigurasi'); if (!conf) return;
     const rows = Object.entries(conf).map(([k, v]) => `<div class="config-row"><span class="config-key">${k.replace(/_/g,' ')}</span><div class="config-val"><input type="text" id="conf_${k}" value="${v||''}" class="config-input"><button class="btn btn-primary btn-sm" onclick="Admin.simpanKonfig('${k}')">Simpan</button></div></div>`).join('');
-    main.innerHTML = `<div class="page-header"><h1>Konfigurasi Sistem</h1><p>Pengaturan parameter operasional platform asesmen.</p></div><div class="card">${rows}</div><div class="danger-zone"><h3>Zona Bahaya</h3><p>Mengganti tahun ajaran akan mengarsipkan log and mereset progres semua siswa. Tindakan ini tidak dapat dibatalkan.</p><button class="btn btn-danger" style="width:auto;" onclick="Admin.gantiTahun()">Ganti Tahun Ajaran</button></div>`;
+    main.innerHTML = `<div class="page-header"><h1>Konfigurasi Sistem</h1><p>Pengaturan parameter operasional platform asesmen.</p></div><div class="card">${rows}</div><div class="danger-zone"><h3>Zona Bahaya</h3><p>Mengganti tahun ajaran akan mengarsipkan log dan mereset progres semua siswa. Tindakan ini tidak dapat dibatalkan.</p><button class="btn btn-danger" style="width:auto;" onclick="Admin.gantiTahun()">Ganti Tahun Ajaran</button></div>`;
   },
   simpanKonfig(kunci) { const val = document.getElementById(`conf_${kunci}`)?.value; API.call('updateKonfigurasi', { kunci, nilaiPerubahan:val }).then(r => { if(r) UI.toast(`${kunci} berhasil disimpan.`,'success'); }); },
-  gantiTahun() { UI.prompt('Ganti Tahun Ajaran', [ { label:'Tahun Ajaran Baru', placeholder:'Contoh: 2026/2027' } ], vals => { if (!vals[0].match(/^\d{4}\/\d{4}$/)) { UI.toast('Format: TTTT/TTTT (mis. 2026/2027)','warning'); return; } UI.confirm('Konfirmasi Pergantian Tahun Ajaran', `Data akan diarsipkan and progres siswa direset. Lanjutkan ke tahun ${vals[0]}?`, () => { API.call('gantiTahunAjaran', { tahunBaru:vals[0] }).then(r => { if(r) { UI.toast('Tahun ajaran berhasil diganti.','success'); Router.go('konfigurasi'); }}); }, { confirmLabel:'Ganti Tahun', danger:true }); }); },
+  gantiTahun() { UI.prompt('Ganti Tahun Ajaran', [ { label:'Tahun Ajaran Baru', placeholder:'Contoh: 2026/2027' } ], vals => { if (!vals[0].match(/^\d{4}\/\d{4}$/)) { UI.toast('Format: TTTT/TTTT (mis. 2026/2027)','warning'); return; } UI.confirm('Konfirmasi Pergantian Tahun Ajaran', `Data akan diarsipkan dan progres siswa direset. Lanjutkan ke tahun ${vals[0]}?`, () => { API.call('gantiTahunAjaran', { tahunBaru:vals[0] }).then(r => { if(r) { UI.toast('Tahun ajaran berhasil diganti.','success'); Router.go('konfigurasi'); }}); }, { confirmLabel:'Ganti Tahun', danger:true }); }); },
   async cetakKartu() {
     const main = document.getElementById('main-panel'); main.innerHTML = UI.loaderHTML();
     const kelas = await API.call('getDaftarKelas'); const kelasList = kelas || [];
@@ -1263,7 +1287,7 @@ const Admin = {
     }
     pdfMake.createPdf({ pageSize: { width: PAGE_W, height: PAGE_H }, pageMargins: [MRG, MRG, MRG, MRG], content: pages }).download(namaFile + '.pdf', () => { main.innerHTML = panelAsli; UI.toast(`Berhasil membuat ${data.length} kartu login.`, 'success'); });
   },
-  cetakSoalPDFForm() { API.call('getDaftarKelas').then(kelasList => { const kls = kelasList || ['Semua Kelas']; UI.prompt('Cetak Lembar Soal (PDF)', [ { label: 'Kelas Sasaran', type: 'select', options: kls }, { label: 'Modul Asesmen', type: 'select', options: ['Literasi', 'Numerasi', 'Gaya Belajar', 'Minat', 'Bakat', '7 Kebiasaan', 'Agama', 'Literasi Dasar', 'Numerasi Dasar'] } ], vals => { this.generateSoalPDF(vals[0], vals[1]); }); }); },
+  cetakSoalPDFForm() { API.call('getDaftarKelas').then(kelasList => { const kls = kelasList || ['Semua Kelas']; UI.prompt('Cetak Lembar Soal (PDF)', [ { label: 'Kelas Sasaran', type: 'select', options: kls }, { label: 'Modul Asesmen', type: 'select', options: ['Literasi', 'Numerasi', 'Gaya Belajar', 'Minat', 'Bakat', '7 Kebiasaan', 'Agama', 'Faktor Eksternal', 'Literasi Dasar', 'Numerasi Dasar'] } ], vals => { this.generateSoalPDF(vals[0], vals[1]); }); }); },
   async generateSoalPDF(kelas, modul) {
     const main = document.getElementById('main-panel'); const originalHTML = main.innerHTML; main.innerHTML = UI.loaderHTML(`Menyiapkan matriks PDF untuk ${modul} ${kelas}...`);
     try {
@@ -1271,7 +1295,7 @@ const Admin = {
       const getBase64Image = async (url) => { try { const res = await fetch(url); if (!res.ok) return null; const blob = await res.blob(); if (!blob.type.startsWith('image/')) return null; return new Promise((resolve) => { const reader = new FileReader(); reader.onloadend = () => resolve(reader.result); reader.readAsDataURL(blob); }); } catch (e) { return null; } };
       
       let groupedSoal = [];
-      const isNonKognitif = ['Gaya Belajar', 'Minat', 'Bakat', '7 Kebiasaan', 'Agama'].includes(modul);
+      const isNonKognitif = ['Gaya Belajar', 'Minat', 'Bakat', '7 Kebiasaan', 'Agama', 'Faktor Eksternal'].includes(modul);
 
       if (isNonKognitif) {
         const groups = [];
