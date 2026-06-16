@@ -680,14 +680,12 @@ const UI = {
 
 const Router = {
   go(panel) {
-    if (STATE.ujian && STATE.ujian.modul && !['literasi','numerasi','nonkognitif','literasi-dasar','numerasi-dasar'].includes(panel)) {
+    const validPanels = ['literasi','numerasi','literasi-dasar','numerasi-dasar','gaya-belajar','minat','bakat','7-kebiasaan','agama'];
+    if (STATE.ujian && STATE.ujian.modul && !validPanels.includes(panel)) {
       UI.confirm('Keluar dari Ujian?', 'Anda sedang mengerjakan ujian. Jawaban akan tersimpan sebagai draf, tetapi Anda harus kembali untuk menyelesaikan.', () => {
-        window.removeEventListener('beforeunload', Siswa._warnLeave);
-        Siswa._copotiKeamananUjian();
+        window.removeEventListener('beforeunload', Siswa._warnLeave); Siswa._copotiKeamananUjian();
         if (STATE.ujian.timer) clearInterval(STATE.ujian.timer);
-        STATE.ujian.modul = '';
-        const overlay = document.getElementById('exam-lock-overlay');
-        if (overlay) overlay.classList.remove('show');
+        STATE.ujian.modul = ''; document.getElementById('exam-lock-overlay')?.classList.remove('show');
         Router._doGo(panel);
       }, { confirmLabel: 'Keluar & Simpan Draf', danger: true });
       return;
@@ -717,23 +715,18 @@ const Router = {
 
     if (peran === 'siswa') {
       const isSiswaBaru = STATE.user.kelas === 'Siswa Baru';
+      const daftarModul = isSiswaBaru
+        ? ['Literasi Dasar', 'Numerasi Dasar', 'Gaya Belajar', 'Minat', 'Bakat', '7 Kebiasaan', 'Agama']
+        : ['Literasi', 'Numerasi', 'Gaya Belajar', 'Minat', 'Bakat', '7 Kebiasaan', 'Agama'];
 
-      if (isSiswaBaru) {
-        h += `<div class="nav-section-label">Asesmen Observasi</div>`;
-        ['Literasi Dasar', 'Numerasi Dasar', 'Nonkognitif'].forEach(m => {
-          const done = prog.includes(m);
-          h += navItem(m.toLowerCase().replace(/\s/g, '-'), m, false, done);
-        });
-      } else {
-        h += `<div class="nav-section-label">Asesmen</div>`;
-        ['Literasi', 'Numerasi', 'Nonkognitif'].forEach((m, i) => {
-          const done = prog.includes(m);
-          const locked = !done && prog.length < i;
-          h += navItem(m.toLowerCase(), m, locked, done);
-        });
-      }
+      h += `<div class="nav-section-label">Asesmen Misi</div>`;
+      daftarModul.forEach((m, i) => {
+        const done = prog.includes(m);
+        const locked = !done && prog.length < i;
+        h += navItem(m.toLowerCase().replace(/\s/g, '-'), m, locked, done);
+      });
 
-      const totalModul = 3; // semua siswa menyelesaikan 3 modul
+      const totalModul = 7;
       const semuaSelesai = prog.length >= totalModul;
       h += `<div class="nav-section-label">Hasil</div>`;
       h += navItem('hasil-siswa', 'Hasil Belajar', !semuaSelesai, false);
@@ -782,9 +775,13 @@ const Siswa = {
       case 'beranda': this.beranda(); break;
       case 'literasi': this.konfirmasiModul('Literasi'); break;
       case 'numerasi': this.konfirmasiModul('Numerasi'); break;
-      case 'nonkognitif': this.konfirmasiModul('Nonkognitif'); break;
       case 'literasi-dasar': this.konfirmasiModul('Literasi Dasar'); break;
       case 'numerasi-dasar': this.konfirmasiModul('Numerasi Dasar'); break;
+      case 'gaya-belajar': this.konfirmasiModul('Gaya Belajar'); break;
+      case 'minat': this.konfirmasiModul('Minat'); break;
+      case 'bakat': this.konfirmasiModul('Bakat'); break;
+      case '7-kebiasaan': this.konfirmasiModul('7 Kebiasaan'); break;
+      case 'agama': this.konfirmasiModul('Agama'); break;
       case 'hasil-siswa': this.hasil(); break;
       case 'latihan-literasi': this.latihan('Literasi'); break;
       default: Router.go('beranda');
@@ -799,12 +796,20 @@ const Siswa = {
       ? [
           { key: 'Literasi Dasar', label: 'Literasi Dasar', panel: 'literasi-dasar' },
           { key: 'Numerasi Dasar', label: 'Numerasi Dasar', panel: 'numerasi-dasar' },
-          { key: 'Nonkognitif',    label: 'Nonkognitif',    panel: 'nonkognitif' }
+          { key: 'Gaya Belajar', label: 'Gaya Belajar', panel: 'gaya-belajar' },
+          { key: 'Minat', label: 'Minat', panel: 'minat' },
+          { key: 'Bakat', label: 'Bakat', panel: 'bakat' },
+          { key: '7 Kebiasaan', label: '7 Kebiasaan', panel: '7-kebiasaan' },
+          { key: 'Agama', label: 'Agama', panel: 'agama' }
         ]
       : [
-          { key: 'Literasi',    label: 'Literasi',    panel: 'literasi' },
-          { key: 'Numerasi',    label: 'Numerasi',    panel: 'numerasi' },
-          { key: 'Nonkognitif', label: 'Nonkognitif', panel: 'nonkognitif' }
+          { key: 'Literasi', label: 'Literasi', panel: 'literasi' },
+          { key: 'Numerasi', label: 'Numerasi', panel: 'numerasi' },
+          { key: 'Gaya Belajar', label: 'Gaya Belajar', panel: 'gaya-belajar' },
+          { key: 'Minat', label: 'Minat', panel: 'minat' },
+          { key: 'Bakat', label: 'Bakat', panel: 'bakat' },
+          { key: '7 Kebiasaan', label: '7 Kebiasaan', panel: '7-kebiasaan' },
+          { key: 'Agama', label: 'Agama', panel: 'agama' }
         ];
 
     const total = moduls.length;
@@ -812,13 +817,13 @@ const Siswa = {
 
     let cards = moduls.map((m, i) => {
       const isDone = prog.includes(m.key);
-      const isLocked = !isDone && (isSiswaBaru ? false : prog.length < i);
+      const isLocked = !isDone && prog.length < i;
       const status = isDone ? `<span class="badge badge-green">Selesai</span>` : isLocked ? `<span class="badge badge-neutral">Terkunci</span>` : `<span class="badge badge-amber">Belum dikerjakan</span>`;
       const action = isDone || isLocked ? '' : `<button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="Router.go('${m.panel}')">Mulai →</button>`;
       return `<div class="stat-card ${isDone ? 'green' : isLocked ? '' : 'amber'}" style="border-radius:var(--radius-lg);"><div class="stat-label">${m.label}</div><div style="margin:6px 0;">${status}</div>${action}</div>`;
     }).join('');
 
-    main.innerHTML = `<div class="hero"><h2>Selamat datang, ${STATE.user.nama}!</h2><p>Kelas ${STATE.user.kelas || 'Siswa Baru'} · Tahun Ajaran ${STATE.config['Tahun_Ajaran_Aktif'] || '-'}</p><div class="hero-meta"><span class="hero-chip">${done} dari ${total} modul selesai</span>${done >= total ? '<span class="hero-chip" style="background:rgba(255,255,255,.2);">✓ Semua Selesai</span>' : ''}</div></div><div class="card" style="margin-bottom:20px;">${UI.progressBar(done, total, 'Progres Keseluruhan')}</div><div class="stat-grid stat-grid-3" style="margin-bottom:24px;">${cards}</div><div id="async-rapor-section"><div class="beranda-stats-section"><div class="section-title">Ringkasan Hasil Asesmen</div><div class="stat-grid stat-grid-3"><div class="skeleton skeleton-card"></div><div class="skeleton skeleton-card"></div><div class="skeleton skeleton-card"></div></div></div></div>`;
+    main.innerHTML = `<div class="hero"><h2>Selamat datang, ${STATE.user.nama}!</h2><p>Kelas ${STATE.user.kelas || 'Siswa Baru'} · Tahun Ajaran ${STATE.config['Tahun_Ajaran_Aktif'] || '-'}</p><div class="hero-meta"><span class="hero-chip">${done} dari ${total} modul selesai</span>${done >= total ? '<span class="hero-chip" style="background:rgba(255,255,255,.2);">✓ Semua Selesai</span>' : ''}</div></div><div class="card" style="margin-bottom:20px;">${UI.progressBar(done, total, 'Progres Keseluruhan')}</div><div class="stat-grid stat-grid-4" style="margin-bottom:24px;">${cards}</div><div id="async-rapor-section"><div class="beranda-stats-section"><div class="section-title">Ringkasan Hasil Asesmen</div><div class="stat-grid stat-grid-3"><div class="skeleton skeleton-card"></div><div class="skeleton skeleton-card"></div><div class="skeleton skeleton-card"></div></div></div></div>`;
     this._loadBerandaStats();
   },
   async _loadBerandaStats() {
@@ -863,9 +868,22 @@ const Siswa = {
     const soal = await API.call('getSoalSiswa', { kelas: STATE.user.kelas, modul });
     if (!soal || soal.length === 0) { UI.toast('Soal belum tersedia.', 'warning'); Router.go('beranda'); return; }
 
-    if (modul === 'Nonkognitif') {
+    const isNonKognitif = ['Gaya Belajar', 'Minat', 'Bakat', '7 Kebiasaan', 'Agama'].includes(modul);
+
+    if (isNonKognitif) {
       const grouped = {};
-      soal.forEach(s => { if (!grouped[s.subModul]) grouped[s.subModul] = { isGroup:true, subModul:s.subModul, questions:[], opsi:s.opsi }; grouped[s.subModul].questions.push(s); });
+      let indexTabel = 1;
+      soal.forEach(s => {
+        if (!grouped[s.dimensi]) {
+          grouped[s.dimensi] = { 
+            isGroup: true, 
+            subModul: `Pernyataan Bagian ${indexTabel++}`,
+            questions: [], 
+            opsi: s.opsi 
+          }; 
+        } 
+        grouped[s.dimensi].questions.push(s); 
+      });
       let num = 1; STATE.ujian.soalAktif = Object.values(grouped).map(g => { g.questions.forEach(q => q.nomorAsli = num++); return g; });
     } else {
       const groups = []; let cur = null; let num = 1;
@@ -942,7 +960,9 @@ const Siswa = {
     if (inp) inp.value = ''; if (err) { err.textContent = ''; err.classList.remove('show'); } if (btn) { btn.disabled = false; btn.textContent = 'Verifikasi & Lanjutkan'; }
     localStorage.removeItem(`LOCK_${STATE.user.id}_${STATE.ujian.modul}`);
     if (STATE.ujian._timerPaused && STATE.ujian.modul) {
-      STATE.ujian._timerPaused = false; const cfg = STATE.config; const mod = STATE.ujian.modul; const hasTimer = cfg['Timer_Aktif'] === 'Ya' && mod !== 'Nonkognitif';
+      STATE.ujian._timerPaused = false; const cfg = STATE.config; const mod = STATE.ujian.modul;
+      const isKognitifReguler = ['Literasi', 'Numerasi'].includes(mod);
+      const hasTimer = cfg['Timer_Aktif'] === 'Ya' && isKognitifReguler;
       if (hasTimer) {
         const disp = document.getElementById('timer-display');
         if (disp && disp.textContent.includes(':')) {
@@ -956,11 +976,13 @@ const Siswa = {
     const main = document.getElementById('main-panel');
     main.innerHTML = `<div class="exam-sticky-bar"><h2>Asesmen ${modul}</h2><div style="display:flex;align-items:center;gap:14px;"><span id="timer-display" class="timer-display"></span><button class="btn btn-ghost btn-sm" onclick="Siswa.batalUjian()">Keluar</button></div></div><div class="exam-wrap"><div id="area-soal"></div><div><div class="palette-card"><h4>Navigasi Soal</h4><div class="palette-legend"><span class="legend-item"><span class="legend-dot dot-answered"></span>Dijawab</span><span class="legend-item"><span class="legend-dot dot-ragu"></span>Ragu</span><span class="legend-item"><span class="legend-dot dot-empty"></span>Belum</span></div><div id="unanswered-warning" class="unanswered-warning"></div><div class="palette-grid" id="area-palet"></div><button class="btn btn-danger btn-full" onclick="Siswa.submitUjian()">Akhiri &amp; Kirim Jawaban</button></div></div></div>`;
     window.addEventListener('beforeunload', this._warnLeave); this._pasangKeamananUjian();
-    const cfg = STATE.config; const hasTimer = cfg['Timer_Aktif'] === 'Ya' && modul !== 'Nonkognitif';
+    const cfg = STATE.config; 
+    const isKognitifReguler = ['Literasi', 'Numerasi'].includes(modul);
+    const hasTimer = cfg['Timer_Aktif'] === 'Ya' && isKognitifReguler;
     if (hasTimer) {
       let sisa = parseInt(cfg[`Timer_${modul}_Menit`] || 60) * 60; const disp = document.getElementById('timer-display'); const fmt = s => `${Math.floor(s/60).toString().padStart(2,'0')}:${(s%60).toString().padStart(2,'0')}`; disp.textContent = fmt(sisa);
       STATE.ujian.timer = setInterval(() => { sisa--; disp.textContent = fmt(sisa); if (sisa <= 60) disp.classList.add('urgent'); if (sisa <= 0) { clearInterval(STATE.ujian.timer); this.submitUjian(); } }, 1000);
-    } else { const d = document.getElementById('timer-display'); if (d) d.textContent = modul === 'Nonkognitif' ? 'Tanpa batas waktu' : ''; }
+    } else { const d = document.getElementById('timer-display'); if (d) d.textContent = 'Tanpa batas waktu'; }
     this._renderSoalAktif(false);
     const isLocked = localStorage.getItem(`LOCK_${STATE.user.id}_${modul}`); if (isLocked) { STATE.ujian.violations = parseInt(isLocked) - 1; this._lockUjian(); }
   },
@@ -1240,17 +1262,18 @@ const Admin = {
     }
     pdfMake.createPdf({ pageSize: { width: PAGE_W, height: PAGE_H }, pageMargins: [MRG, MRG, MRG, MRG], content: pages }).download(namaFile + '.pdf', () => { main.innerHTML = panelAsli; UI.toast(`Berhasil membuat ${data.length} kartu login.`, 'success'); });
   },
-  cetakSoalPDFForm() { API.call('getDaftarKelas').then(kelasList => { const kls = kelasList || ['Semua Kelas']; UI.prompt('Cetak Lembar Soal (PDF)', [ { label: 'Kelas Sasaran', type: 'select', options: kls }, { label: 'Modul Asesmen', type: 'select', options: ['Literasi', 'Numerasi', 'Nonkognitif', 'Literasi Dasar', 'Numerasi Dasar'] } ], vals => { this.generateSoalPDF(vals[0], vals[1]); }); }); },
+  cetakSoalPDFForm() { API.call('getDaftarKelas').then(kelasList => { const kls = kelasList || ['Semua Kelas']; UI.prompt('Cetak Lembar Soal (PDF)', [ { label: 'Kelas Sasaran', type: 'select', options: kls }, { label: 'Modul Asesmen', type: 'select', options: ['Literasi', 'Numerasi', 'Gaya Belajar', 'Minat', 'Bakat', '7 Kebiasaan', 'Agama', 'Literasi Dasar', 'Numerasi Dasar'] } ], vals => { this.generateSoalPDF(vals[0], vals[1]); }); }); },
   async generateSoalPDF(kelas, modul) {
     const main = document.getElementById('main-panel'); const originalHTML = main.innerHTML; main.innerHTML = UI.loaderHTML(`Menyiapkan matriks PDF untuk ${modul} ${kelas}...`);
     try {
       const soal = await API.call('getSoalSiswa', { kelas, modul }); if (!soal || soal.length === 0) { UI.toast('Bank soal kosong.', 'warning'); main.innerHTML = originalHTML; return; }
       const getBase64Image = async (url) => { try { const res = await fetch(url); if (!res.ok) return null; const blob = await res.blob(); if (!blob.type.startsWith('image/')) return null; return new Promise((resolve) => { const reader = new FileReader(); reader.onloadend = () => resolve(reader.result); reader.readAsDataURL(blob); }); } catch (e) { return null; } };
       let groupedSoal = [];
-      if (modul === 'Nonkognitif') {
-        const grouped = {}; soal.forEach(s => { if (!grouped[s.subModul]) grouped[s.subModul] = { isGroup: true, subModul: s.subModul, questions: [], opsi: s.opsi }; grouped[s.subModul].questions.push(s); });
-        const urutanKategori = ['Gaya Belajar', 'Minat', 'Bakat', '7 Kebiasaan', 'Agama'];
-        groupedSoal = Object.values(grouped).sort((a, b) => { let urutanA = urutanKategori.findIndex(k => a.subModul.toLowerCase().includes(k.toLowerCase())); let urutanB = urutanKategori.findIndex(k => b.subModul.toLowerCase().includes(k.toLowerCase())); if (urutanA === -1) urutanA = 99; if (urutanB === -1) urutanB = 99; return urutanA - urutanB; });
+      const isNonKognitif = ['Gaya Belajar', 'Minat', 'Bakat', '7 Kebiasaan', 'Agama'].includes(modul);
+
+      if (isNonKognitif) {
+        const grouped = {}; soal.forEach(s => { if (!grouped[s.dimensi]) grouped[s.dimensi] = { isGroup: true, subModul: s.subModul, questions: [], opsi: s.opsi }; grouped[s.dimensi].questions.push(s); });
+        groupedSoal = Object.values(grouped);
       } else {
         let cur = null; let num = 1; soal.forEach(s => { s.nomorAsli = num++; const key = (s.bacaan || '') + '|' + (s.gambar || ''); if (key === '|') { groupedSoal.push(s); cur = null; } else { if (cur && cur.stimKey === key) cur.questions.push(s); else { cur = { isStimulusGroup: true, stimKey: key, bacaan: s.bacaan, gambar: s.gambar, questions: [s] }; groupedSoal.push(cur); } } });
       }
@@ -1271,7 +1294,7 @@ const Admin = {
       let teksCounter = 1;
       for (const g of groupedSoal) {
         if (g.isGroup && g.subModul) {
-          let namaKategori = g.subModul; if (namaKategori.toLowerCase().includes('agama')) namaKategori = 'Keagamaan';
+          let namaKategori = g.subModul || modul; if (namaKategori.toLowerCase().includes('agama')) namaKategori = 'Keagamaan';
           content.push({ text: namaKategori, fontSize: 12, bold: true, margin: [0, 8, 0, 4] }); content.push({ text: 'Beri tanda silang (X) atau centang (✓) pada kolom yang paling sesuai dengan diri Anda.', fontSize: 10, italics: true, color: '#4b5e52', margin: [0, 0, 0, 6] });
           const tableBody = [ [ { text: 'Pernyataan', bold: true, fontSize: 10, fillColor: '#e6f2eb', margin: [4, 4, 4, 4] }, ...g.opsi.map(o => ({ text: o, bold: true, fontSize: 10, alignment: 'center', fillColor: '#e6f2eb', margin: [4, 4, 4, 4] })) ] ];
           g.questions.forEach(q => { tableBody.push([ { text: q.pertanyaan, fontSize: 10, margin: [4, 4, 4, 4] }, ...g.opsi.map(() => ({ text: '', alignment: 'center', margin: [4, 4, 4, 4] })) ]); });
