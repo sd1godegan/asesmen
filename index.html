@@ -1016,33 +1016,58 @@ const Siswa = {
     if (!data) { main.innerHTML = `<div class="card" style="text-align:center;color:var(--ink-300);padding:48px;">Data rapor belum tersedia.</div>`; return; }
     STATE.raporSiswa = data;
     const parseField = t => t ? t.split('|') : ['–', ''];
+    
+    // [PERBAIKAN] Fungsi penyisipan "Ananda Nama" untuk Nonkognitif
     const nkogCard = (iconClass, emoji, title, subtitle, fieldRaw, fullWidth = false) => {
-      const parts = parseField(fieldRaw); const dominan = parts[0] || '–'; const narasi = parts[1] || '';
+      const parts = parseField(fieldRaw); const dominan = parts[0] || '–'; let narasi = parts[1] || '';
+      if (narasi) {
+        // Otomatis tambah awalan dan ubah huruf pertama diagnosis jadi kecil
+        narasi = `Ananda ${data.Nama_Siswa || STATE.user.nama} ${narasi.charAt(0).toLowerCase() + narasi.slice(1)}`;
+      }
       return `<div class="nkog-card${fullWidth ? ' full-width' : ''}"><div class="nkog-header"><div class="nkog-icon ${iconClass}">${emoji}</div><div><div class="nkog-title">${title}</div><div class="nkog-subtitle">${subtitle}</div></div></div><div class="nkog-dominan-label">Dominan</div><div class="nkog-dominan">${dominan}</div>${narasi ? `<div class="nkog-narasi">${narasi}</div>` : ''}</div>`;
     };
+    
     const KEBIASAAN_LIST = [ { kode:'K1', label:'Bangun Pagi' }, { kode:'K2', label:'Beribadah' }, { kode:'K3', label:'Berolahraga' }, { kode:'K4', label:'Makan Sehat & Bergizi' }, { kode:'K5', label:'Gemar Belajar' }, { kode:'K6', label:'Bermasyarakat' }, { kode:'K7', label:'Tidur Cepat' } ];
-    const kbRaw = data.Karakter_7_Kebiasaan || ''; const kbParts = parseField(kbRaw); const kbDominan = kbParts[0] || '–'; const kbNarasi = kbParts[1] || ''; const kbDomArr = kbDominan.split(' & ').map(s => s.trim());
+    const kbRaw = data.Karakter_7_Kebiasaan || ''; const kbParts = parseField(kbRaw); const kbDominan = kbParts[0] || '–'; let kbNarasi = kbParts[1] || ''; const kbDomArr = kbDominan.split(' & ').map(s => s.trim());
     const kebiasaanChips = KEBIASAAN_LIST.map(k => {
       const isDom = kbDomArr.some(d => d.toLowerCase().includes(k.label.toLowerCase()) || k.label.toLowerCase().includes(d.toLowerCase()));
       return `<div class="kebiasaan-chip${isDom ? ' dominan' : ''}"><span class="k-dot"></span><span>${k.label}</span>${isDom ? '<span style="margin-left:auto;font-size:11px;">✓</span>' : ''}</div>`;
     }).join('');
+    
+    if (kbNarasi) { kbNarasi = `Ananda ${data.Nama_Siswa || STATE.user.nama} ${kbNarasi.charAt(0).toLowerCase() + kbNarasi.slice(1)}`; }
+    
     const kebiasaanCard = `<div class="nkog-card full-width"><div class="nkog-header"><div class="nkog-icon kb">🌱</div><div><div class="nkog-title">7 Kebiasaan</div><div class="nkog-subtitle">Kebiasaan yang paling konsisten dilakukan</div></div></div><div style="display:flex;align-items:baseline;gap:10px;margin-bottom:8px;"><div class="nkog-dominan-label">Dominan</div><div class="nkog-dominan" style="font-size:16px;">${kbDominan}</div></div>${kbNarasi ? `<div class="nkog-narasi" style="margin-bottom:14px;">${kbNarasi}</div>` : ''}<div style="font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-300);margin-bottom:8px;">Semua Kebiasaan</div><div class="kebiasaan-grid">${kebiasaanChips}</div></div>`;
 
-    main.innerHTML = `<div class="page-header"><h1>Rapor Diagnostik</h1><p>Hasil pemetaan kompetensi dan karakter ${data.Nama_Siswa || STATE.user.nama}</p></div><div class="card"><div class="card-header"><h3>Asesmen Kompetensi Minimum (AKM)</h3><button class="btn btn-primary btn-sm" onclick="Siswa.exportPDF()">Unduh PDF</button></div><div class="rapor-akm-grid"><div class="rapor-akm-card"><h4>Literasi</h4><div class="rapor-score">${data.Skor_Literasi || '–'}</div><div style="margin-top:10px;">${UI.badge(data.Kategori_Literasi || '–', 'auto')}</div><div class="rapor-desc">${data.Deskripsi_Literasi ? 'Ananda ' + (data.Nama_Siswa || STATE.user.nama) + ' ' + data.Deskripsi_Literasi.charAt(0).toLowerCase() + data.Deskripsi_Literasi.slice(1) : 'Deskripsi belum tersedia.'}</div></div><div class="rapor-akm-card"><h4>Numerasi</h4><div class="rapor-score">${data.Skor_Numerasi || '–'}</div><div style="margin-top:10px;">${UI.badge(data.Kategori_Numerasi || '–', 'auto')}</div><div class="rapor-desc">${data.Deskripsi_Numerasi ? 'Ananda ' + (data.Nama_Siswa || STATE.user.nama) + ' ' + data.Deskripsi_Numerasi.charAt(0).toLowerCase() + data.Deskripsi_Numerasi.slice(1) : 'Deskripsi belum tersedia.'}</div></div></div></div><div class="card"><div class="card-title">Profil Nonkognitif &amp; Karakter</div><div class="nkog-grid">${nkogCard('gb', '👁️', 'Gaya Belajar', 'Cara terbaik siswa menyerap informasi', data.Gaya_Belajar_Dominan)} ${nkogCard('mnt', '🎯', 'Minat', 'Fokus dan keterlibatan siswa dalam aktivitas', data.Minat_Dominan)} ${nkogCard('bkt', '⭐', 'Bakat', 'Kecenderungan kemampuan alami siswa', data.Bakat_Dominan)} ${nkogCard('ag', '🕌', 'Pembiasaan Agama','Praktik keagamaan dalam keseharian', data.Pembiasaan_Agama)} ${kebiasaanCard}</div></div>`;
+    const labelLit = data.Kelas === 'Siswa Baru' ? 'Literasi Dasar' : 'Literasi';
+    const labelNum = data.Kelas === 'Siswa Baru' ? 'Numerasi Dasar' : 'Numerasi';
+
+    main.innerHTML = `<div class="page-header"><h1>Rapor Diagnostik</h1><p>Hasil pemetaan kompetensi dan karakter ${data.Nama_Siswa || STATE.user.nama}</p></div><div class="card"><div class="card-header"><h3>Asesmen Kompetensi Minimum (AKM)</h3><button class="btn btn-primary btn-sm" onclick="Siswa.exportPDF()">Unduh PDF</button></div><div class="rapor-akm-grid"><div class="rapor-akm-card"><h4>${labelLit}</h4><div class="rapor-score">${data.Skor_Literasi || '–'}</div><div style="margin-top:10px;">${UI.badge(data.Kategori_Literasi || '–', 'auto')}</div><div class="rapor-desc">${data.Deskripsi_Literasi ? 'Ananda ' + (data.Nama_Siswa || STATE.user.nama) + ' ' + data.Deskripsi_Literasi.charAt(0).toLowerCase() + data.Deskripsi_Literasi.slice(1) : 'Deskripsi belum tersedia.'}</div></div><div class="rapor-akm-card"><h4>${labelNum}</h4><div class="rapor-score">${data.Skor_Numerasi || '–'}</div><div style="margin-top:10px;">${UI.badge(data.Kategori_Numerasi || '–', 'auto')}</div><div class="rapor-desc">${data.Deskripsi_Numerasi ? 'Ananda ' + (data.Nama_Siswa || STATE.user.nama) + ' ' + data.Deskripsi_Numerasi.charAt(0).toLowerCase() + data.Deskripsi_Numerasi.slice(1) : 'Deskripsi belum tersedia.'}</div></div></div></div><div class="card"><div class="card-title">Profil Nonkognitif &amp; Karakter</div><div class="nkog-grid">${nkogCard('gb', '👁️', 'Gaya Belajar', 'Cara terbaik siswa menyerap informasi', data.Gaya_Belajar_Dominan)} ${nkogCard('mnt', '🎯', 'Minat', 'Fokus dan keterlibatan siswa dalam aktivitas', data.Minat_Dominan)} ${nkogCard('bkt', '⭐', 'Bakat', 'Kecenderungan kemampuan alami siswa', data.Bakat_Dominan)} ${nkogCard('ag', '🕌', 'Pembiasaan Agama','Praktik keagamaan dalam keseharian', data.Pembiasaan_Agama)} ${kebiasaanCard}</div></div>`;
   },
   exportPDF() {
-    const d = STATE.raporSiswa; if (!d) return; const thn = STATE.config['Tahun_Ajaran_Aktif'] || '-'; const parse = t => t ? t.replace(/\|/g, ' — ') : '-';
+    const d = STATE.raporSiswa; if (!d) return; const thn = STATE.config['Tahun_Ajaran_Aktif'] || '-'; 
+    
+    // [PERBAIKAN] Menarik teks narasi ke PDF sekaligus merangkai kalimat "Ananda"
+    const parse = t => {
+      if (!t) return '-';
+      const p = t.split('|');
+      if (p[1]) return `${p[0]} — Ananda ${d.Nama_Siswa || STATE.user.nama} ${p[1].charAt(0).toLowerCase() + p[1].slice(1)}`;
+      return p[0];
+    };
+
     const KEBIASAAN_LIST = ['Bangun Pagi','Beribadah','Berolahraga','Makan Sehat & Bergizi','Gemar Belajar','Bermasyarakat','Tidur Cepat'];
     const kbDominans = (d.Karakter_7_Kebiasaan||'').split('|')[0].split(' & ').map(s => s.trim());
+    const titleLit = d.Kelas === 'Siswa Baru' ? 'LITERASI DASAR' : 'LITERASI';
+    const titleNum = d.Kelas === 'Siswa Baru' ? 'NUMERASI DASAR' : 'NUMERASI';
+
     pdfMake.createPdf({
       pageSize: 'A4', pageMargins: [45, 50, 45, 50],
       content: [
         { text: 'RAPOR ASESMEN DIAGNOSTIK', style:'header', alignment:'center' },
         { text: `SD Negeri 1 Godegan · Tahun Ajaran ${thn}`, alignment:'center', fontSize:10, color:'#666', margin:[0,4,0,28] },
         { table:{ widths:[100,8,'*'], body:[ [{text:'Nama Siswa',bold:true},':',(d.Nama_Siswa||'-')], [{text:'Kelas', bold:true},':',(d.Kelas||'-')] ]}, layout:'noBorders', margin:[0,0,0,28] },
-        { text:'A.  ASESMEN LITERASI', style:'subheader' }, { text:`Skor: ${d.Skor_Literasi||'-'}  |  Kategori: ${d.Kategori_Literasi||'-'}`, bold:true, margin:[15,6,0,6], fontSize:12 },
+        { text:`A.  ASESMEN ${titleLit}`, style:'subheader' }, { text:`Skor: ${d.Skor_Literasi||'-'}  |  Kategori: ${d.Kategori_Literasi||'-'}`, bold:true, margin:[15,6,0,6], fontSize:12 },
         { text: d.Deskripsi_Literasi ? `Ananda ${d.Nama_Siswa} ${d.Deskripsi_Literasi.charAt(0).toLowerCase()+d.Deskripsi_Literasi.slice(1)}` : '-', margin:[15,0,0,20], fontSize:11 },
-        { text:'B.  ASESMEN NUMERASI', style:'subheader' }, { text:`Skor: ${d.Skor_Numerasi||'-'}  |  Kategori: ${d.Kategori_Numerasi||'-'}`, bold:true, margin:[15,6,0,6], fontSize:12 },
+        { text:`B.  ASESMEN ${titleNum}`, style:'subheader' }, { text:`Skor: ${d.Skor_Numerasi||'-'}  |  Kategori: ${d.Kategori_Numerasi||'-'}`, bold:true, margin:[15,6,0,6], fontSize:12 },
         { text: d.Deskripsi_Numerasi ? `Ananda ${d.Nama_Siswa} ${d.Deskripsi_Numerasi.charAt(0).toLowerCase()+d.Deskripsi_Numerasi.slice(1)}` : '-', margin:[15,0,0,20], fontSize:11 },
         { text:'C.  PROFIL NONKOGNITIF', style:'subheader' }, { ul:[ `Gaya Belajar Dominan: ${parse(d.Gaya_Belajar_Dominan)}`, `Minat Utama: ${parse(d.Minat_Dominan)}`, `Kecenderungan Bakat: ${parse(d.Bakat_Dominan)}`, `Pembiasaan Agama: ${parse(d.Pembiasaan_Agama)}` ], margin:[15,8,0,16], fontSize:11 },
         { text:'D.  7 KEBIASAAN', style:'subheader' }, { text:`Kebiasaan Dominan: ${kbDominans.join(', ')}`, bold:true, margin:[15,6,0,8], fontSize:11 },
