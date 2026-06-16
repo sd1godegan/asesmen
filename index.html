@@ -929,21 +929,62 @@ const Siswa = {
       }, { confirmLabel: 'Lanjutkan' });
     } else { this._renderUjianLayout(modul); }
   },
-  _renderSoalAktif(scrollOnly = false) {
+_renderSoalAktif(scrollOnly = false) {
     const u = STATE.ujian; const cur = u.flatSoal[u.idxFlat]; if (!cur) return; const mapInfo = u.soalGroupMap.get(cur.idSoal); if (!mapInfo) return;
     const group = u.soalAktif[mapInfo.gi]; const gKey = String(mapInfo.gi);
     if (gKey === u.currentGroupKey && scrollOnly) { document.getElementById(`soal-${cur.idSoal}`)?.scrollIntoView({ behavior:'smooth', block:'nearest' }); this._updatePalet(); return; }
 
     let html = '';
     if (group.isGroup && group.subModul) html = UI.likertTable(group, u, 'Siswa'); else if (group.isStimulusGroup) html = UI.stimulusGroup(group, u, 'Siswa'); else html = UI.questionBlock(group, u.jawaban[group.idSoal], u.ragu[group.idSoal], 'Siswa');
-    const isFirst = mapInfo.gi === 0; const isLast = mapInfo.gi === u.soalAktif.length - 1;
-    html += `<div class="exam-nav"><button class="btn btn-secondary" ${isFirst ? 'disabled' : ''} onclick="Siswa.navigasiGroup(-1)">← Sebelumnya</button><button class="btn btn-primary" ${isLast ? 'disabled' : ''} onclick="Siswa.navigasiGroup(1)">Selanjutnya →</button></div>`;
+    
+    const isFirst = mapInfo.gi === 0; 
+    const isLast = mapInfo.gi === u.soalAktif.length - 1;
+    
+    // Tambahkan id="btn-next-nav" agar mudah dimanipulasi oleh _updatePalet
+    html += `<div class="exam-nav">
+      <button class="btn btn-secondary" ${isFirst ? 'disabled' : ''} onclick="Siswa.navigasiGroup(-1)">← Sebelumnya</button>
+      <button id="btn-next-nav" class="btn btn-primary" onclick="Siswa.navigasiGroup(1)">Selanjutnya →</button>
+    </div>`;
+    
     document.getElementById('area-soal').innerHTML = html; u.currentGroupKey = gKey;
-    document.getElementById(`soal-${cur.idSoal}`)?.scrollIntoView({ behavior:'smooth', block:'nearest' }); this._updatePalet();
+    document.getElementById(`soal-${cur.idSoal}`)?.scrollIntoView({ behavior:'smooth', block:'nearest' }); 
+    this._updatePalet();
   },
-  _updatePalet() {
-    const el = document.getElementById('area-palet'); if (el) el.innerHTML = UI.palette(STATE.ujian.flatSoal, STATE.ujian.idxFlat, STATE.ujian.jawaban, STATE.ujian.ragu, 'Siswa.goToSoal');
-    UI.updateUnansweredWarning(STATE.ujian.flatSoal, STATE.ujian.jawaban);
+_updatePalet() {
+    const u = STATE.ujian;
+    const el = document.getElementById('area-palet'); 
+    if (el) el.innerHTML = UI.palette(u.flatSoal, u.idxFlat, u.jawaban, u.ragu, 'Siswa.goToSoal');
+    
+    const sisaKosong = UI.updateUnansweredWarning(u.flatSoal, u.jawaban);
+
+    // Logika pengubahan tombol Akhiri Ujian
+    const btnNext = document.getElementById('btn-next-nav');
+    if (btnNext) {
+      const cur = u.flatSoal[u.idxFlat];
+      if (cur) {
+        const mapInfo = u.soalGroupMap.get(cur.idSoal);
+        const isLast = mapInfo.gi === u.soalAktif.length - 1;
+        
+        if (isLast) {
+          if (sisaKosong === 0) {
+            // Berada di bagian akhir dan semua soal telah terisi
+            btnNext.textContent = 'Akhiri Ujian';
+            btnNext.className = 'btn btn-danger';
+            btnNext.onclick = () => Siswa.submitUjian();
+          } else {
+            // Berada di bagian akhir namun masih ada soal terlewat
+            btnNext.textContent = `Akhiri Ujian (${sisaKosong} belum dijawab)`;
+            btnNext.className = 'btn btn-primary'; 
+            btnNext.onclick = () => Siswa.submitUjian();
+          }
+        } else {
+          // Bukan di bagian akhir, tombol bertindak sebagai navigasi normal
+          btnNext.textContent = 'Selanjutnya →';
+          btnNext.className = 'btn btn-primary';
+          btnNext.onclick = () => Siswa.navigasiGroup(1);
+        }
+      }
+    }
   },
   goToSoal(idx) { STATE.ujian.idxFlat = idx; this._renderSoalAktif(true); },
   navigasiGroup(arah) {
