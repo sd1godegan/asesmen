@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Asesmen Diagnostik · SD Negeri 1 Godegan</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
@@ -940,7 +943,6 @@ _renderSoalAktif(scrollOnly = false) {
     const isFirst = mapInfo.gi === 0; 
     const isLast = mapInfo.gi === u.soalAktif.length - 1;
     
-    // Tambahkan id="btn-next-nav" agar mudah dimanipulasi oleh _updatePalet
     html += `<div class="exam-nav">
       <button class="btn btn-secondary" ${isFirst ? 'disabled' : ''} onclick="Siswa.navigasiGroup(-1)">← Sebelumnya</button>
       <button id="btn-next-nav" class="btn btn-primary" onclick="Siswa.navigasiGroup(1)">Selanjutnya →</button>
@@ -949,6 +951,19 @@ _renderSoalAktif(scrollOnly = false) {
     document.getElementById('area-soal').innerHTML = html; u.currentGroupKey = gKey;
     document.getElementById(`soal-${cur.idSoal}`)?.scrollIntoView({ behavior:'smooth', block:'nearest' }); 
     this._updatePalet();
+   
+    const areaSoal = document.getElementById('area-soal');
+    if (areaSoal && window.renderMathInElement) {
+      renderMathInElement(areaSoal, {
+        delimiters: [
+          {left: '$$', right: '$$', display: true},
+          {left: '$', right: '$', display: false},
+          {left: '\\(', right: '\\)', display: false},
+          {left: '\\[', right: '\\]', display: true}
+        ],
+        throwOnError: false
+      });
+    }
   },
 _updatePalet() {
     const u = STATE.ujian;
