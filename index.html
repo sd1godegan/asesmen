@@ -1626,7 +1626,7 @@ async generateSoalPDF(kelas, modul) {
         if (g.isGroup && g.subModul) {
           let namaKategori = g.subModul || modul; if (namaKategori.toLowerCase().includes('agama')) namaKategori = 'Keagamaan';
           content.push({ text: namaKategori, fontSize: 11, bold: true, margin: [0, 8, 0, 4] }); 
-          content.push({ text: 'Beri tanda atau centang (√) pada kolom yang paling sesuai.', fontSize: 9, italics: true, color: '#4b5e52', margin: [0, 0, 0, 4] });
+          content.push({ text: 'Beri tanda centang (√) pada kolom yang paling sesuai.', fontSize: 9, italics: true, color: '#4b5e52', margin: [0, 0, 0, 4] });
           
           const hasSingkatan = g.opsi.some(o => ['PB', 'MB', 'BSH', 'SB'].includes(o));
           if (hasSingkatan) {
