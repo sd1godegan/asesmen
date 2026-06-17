@@ -1598,8 +1598,8 @@ const Admin = {
         let cur = null; let num = 1; soal.forEach(s => { s.nomorAsli = num++; const key = (s.bacaan || '') + '|' + (s.gambar || ''); if (key === '|') { groupedSoal.push(s); cur = null; } else { if (cur && cur.stimKey === key) cur.questions.push(s); else { cur = { isStimulusGroup: true, stimKey: key, bacaan: s.bacaan, gambar: s.gambar, questions: [s] }; groupedSoal.push(cur); } } });
       }
       const content = [
-        { text: 'LEMBAR SOAL ASESMEN DIAGNOSTIK', style: 'header', alignment: 'center' }, { text: `SDN 1 Godegan Bersinar  |  Modul: ${modul}  |  Sasaran: ${kelas}`, alignment: 'center', margin: [0, 4, 0, 12], fontSize: 10, color: '#4b5e52' },
-        { table: { widths: ['*', '*', '*'], body: [[ { text: 'Nama: ........................................', border: [false, false, false, false] }, { text: 'Kelas: ....................', border: [false, false, false, false] }, { text: 'No. Absen: .........', border: [false, false, false, false], alignment: 'right' } ]] }, margin: [0, 0, 0, 10], fontSize: 11 },
+        { text: 'LEMBAR SOAL ASESMEN DIAGNOSTIK', style: 'header', alignment: 'center' }, { text: `SD Negeri 1 Godegan |  Modul: ${modul}  |  Sasaran: ${kelas}`, alignment: 'center', margin: [0, 4, 0, 12], fontSize: 10, color: '#4b5e52' },
+        { table: { widths: ['*', '*', '*'], body: [[ { text: 'Nama: ........................................', border: [false, false, false, false] }, { text: 'No. Absen: .........', border: [false, false, false, false], alignment: 'right' } ]] }, margin: [0, 0, 0, 10], fontSize: 11 },
         { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 525, y2: 0, lineWidth: 1.5 }], margin: [0, 0, 0, 10] }
       ];
       function appendQuestionToPDF(docContent, q) {
