@@ -1038,6 +1038,26 @@ const Siswa = {
     if (STATE.ujian.timer) { clearInterval(STATE.ujian.timer); STATE.ujian._timerPaused = true; }
     const ctr = document.getElementById('lock-violation-count'); if (overlay) overlay.classList.add('show'); if (ctr) { ctr.style.display = 'block'; ctr.textContent = `Pelanggaran ke-${STATE.ujian.violations}`; }
   },
+submitTokenUjian() {
+    const input = document.getElementById('lock-token-input');
+    const err = document.getElementById('lock-token-error');
+    const token = input.value.trim();
+    // Mengambil token langsung dari data konfigurasi server
+    const validToken = String(STATE.config['Token_Ujian'] || '123456');
+
+    if (!token) {
+      err.textContent = 'Token tidak boleh kosong.';
+      err.classList.add('show');
+      return;
+    }
+
+    if (token === validToken) {
+      this.unlockUjian();
+    } else {
+      err.textContent = 'Token tidak valid. Hubungi administrator.';
+      err.classList.add('show');
+    }
+  },
   unlockUjian() {
     const overlay = document.getElementById('exam-lock-overlay'); if (overlay) overlay.classList.remove('show');
     const inp = document.getElementById('lock-token-input'); const err = document.getElementById('lock-token-error'); const btn = document.getElementById('lock-token-btn');
