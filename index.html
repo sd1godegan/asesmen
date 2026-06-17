@@ -1187,7 +1187,7 @@ _updatePalet() {
         
         { text:'D.  7 KEBIASAAN', style:'subheader' },
         { text:`Kebiasaan Dominan: ${kbDominans.join(', ')}`, bold:true, margin:[15,6,0,8], fontSize:10 },
-        { table: { widths: ['*', 70], body: [ [{text:'Daftar Kebiasaan', bold:true, fontSize:10, fillColor: '#f3f9f5'}, {text:'Status', bold:true, fontSize:10, alignment:'center', fillColor: '#f3f9f5'}], ...KEBIASAAN_LIST.map(k => { const isDom = kbDominans.some(d2 => d2.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(d2.toLowerCase())); return [{ text:k, fontSize:10, margin: [0, 2, 0, 2] }, { text: isDom ? '✓ Dominan' : '–', fontSize:10, alignment:'center', color: isDom ? '#2d4d38' : '#8ea396', margin: [0, 2, 0, 2] }]; }) ] }, layout:{ hLineWidth: () => 0.5, vLineWidth: () => 0, hLineColor: () => '#dce7e0' }, margin:[15,0,0,0] }
+        { table: { widths: ['*', 70], body: [ [{text:'Daftar Kebiasaan', bold:true, fontSize:10, fillColor: '#f3f9f5'}, {text:'Status', bold:true, fontSize:10, alignment:'center', fillColor: '#f3f9f5'}], ...KEBIASAAN_LIST.map(k => { const isDom = kbDominans.some(d2 => d2.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(d2.toLowerCase())); return [{ text:k, fontSize:10, margin: [0, 2, 0, 2] }, { text: isDom ? '√ Dominan' : '–', fontSize:10, alignment:'center', color: isDom ? '#2d4d38' : '#8ea396', margin: [0, 2, 0, 2] }]; }) ] }, layout:{ hLineWidth: () => 0.5, vLineWidth: () => 0, hLineColor: () => '#dce7e0' }, margin:[15,0,0,0] }
       ], styles: { header: { fontSize:16, bold:true, letterSpacing: 1 }, subheader: { fontSize:12, bold:true, marginTop:10, marginBottom:4, color: '#1a2e22' } }
     }).download(`Rapor_${d.Nama_Siswa || 'Siswa'}.pdf`);
   }
@@ -1615,7 +1615,7 @@ const Admin = {
       for (const g of groupedSoal) {
         if (g.isGroup && g.subModul) {
           let namaKategori = g.subModul || modul; if (namaKategori.toLowerCase().includes('agama')) namaKategori = 'Keagamaan';
-          content.push({ text: namaKategori, fontSize: 11, bold: true, margin: [0, 8, 0, 4] }); content.push({ text: 'Beri tanda silang (X) atau centang (✓) pada kolom yang paling sesuai dengan diri Anda.', fontSize: 9, italics: true, color: '#4b5e52', margin: [0, 0, 0, 6] });
+          content.push({ text: namaKategori, fontSize: 11, bold: true, margin: [0, 8, 0, 4] }); content.push({ text: 'Beri tanda centang (√) pada kolom yang paling sesuai dengan diri kamu!.', fontSize: 9, italics: true, color: '#4b5e52', margin: [0, 0, 0, 6] });
           const tableBody = [ [ { text: 'Pernyataan', bold: true, fontSize: 10, fillColor: '#e6f2eb', margin: [4, 4, 4, 4] }, ...g.opsi.map(o => ({ text: o, bold: true, fontSize: 10, alignment: 'center', fillColor: '#e6f2eb', margin: [4, 4, 4, 4] })) ] ];
           g.questions.forEach(q => { tableBody.push([ { text: q.pertanyaan, fontSize: 10, margin: [4, 4, 4, 4] }, ...g.opsi.map(() => ({ text: '', alignment: 'center', margin: [4, 4, 4, 4] })) ]); });
           content.push({ table: { headerRows: 1, dontBreakRows: true, widths: ['*', ...g.opsi.map(() => 'auto')], body: tableBody }, layout: { hLineWidth: (i, node) => (i === 0 || i === node.table.body.length) ? 1 : 0.5, vLineWidth: () => 0.5, hLineColor: () => '#bdd4c4', vLineColor: () => '#bdd4c4' }, margin: [0, 0, 0, 16] });
