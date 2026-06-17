@@ -657,9 +657,15 @@ const UI = {
     group.questions.forEach(sq => h += UI.questionBlock(sq, stateUjian.jawaban[sq.idSoal], stateUjian.ragu[sq.idSoal], nsPrefix));
     h += `</div>`; return h;
   },
-  likertTable(group, stateUjian, nsPrefix) {
+   likertTable(group, stateUjian, nsPrefix) {
     const opsi = group.opsi || [];
-    let h = `<div class="soal-block with-stimulus"><div class="q-label" style="font-size:13px;text-transform:none;letter-spacing:0;font-weight:700;color:var(--green-700);">${group.subModul}</div><p style="font-size:12.5px;color:var(--ink-500);margin-bottom:16px;">Pilih salah satu jawaban yang paling mencerminkan kondisi Anda.</p><div class="likert-wrap"><table class="likert-table"><thead><tr><th>No</th><th>Pernyataan</th>${opsi.map(o => `<th>${o}</th>`).join('')}</tr></thead><tbody>`;
+        // Deteksi cerdas penggunaan opsi singkatan
+    const hasSingkatan = opsi.some(o => ['PB', 'MB', 'BSB', 'SB', 'BSH'].includes(o));
+    const legendHtml = hasSingkatan 
+      ? `<div style="font-size:11.5px;color:var(--ink-500);margin-bottom:12px;padding:8px 12px;background:var(--ink-50);border-radius:var(--radius-sm);display:inline-block;border:1px solid var(--ink-100);"><strong>Keterangan:</strong> PB (Perlu Bimbingan) &nbsp;|&nbsp; MB (Mulai Berkembang) &nbsp;|&nbsp; BSB (Berkembang Sangat Baik) &nbsp;|&nbsp; SB (Sangat Baik)</div>` 
+      : '';
+    let h = `<div class="soal-block with-stimulus"><div class="q-label" style="font-size:13px;text-transform:none;letter-spacing:0;font-weight:700;color:var(--green-700);">${group.subModul}</div><p style="font-size:12.5px;color:var(--ink-500);margin-bottom:8px;">Pilih salah satu jawaban yang paling mencerminkan kondisi peserta didik.</p>${legendHtml}<div class="likert-wrap"><table class="likert-table"><thead><tr><th>No</th><th>Pernyataan</th>${opsi.map(o => `<th>${o}</th>`).join('')}</tr></thead><tbody>`;
+
     group.questions.forEach(sq => {
       const val = stateUjian.jawaban[sq.idSoal] || '';
       h += `<tr><td>${sq.nomorAsli}</td><td>${sq.pertanyaan}</td>`;
@@ -1629,11 +1635,17 @@ const Admin = {
       }
       let teksCounter = 1;
       for (const g of groupedSoal) {
-        if (g.isGroup && g.subModul) {
+         if (g.isGroup && g.subModul) {
           let namaKategori = g.subModul || modul; if (namaKategori.toLowerCase().includes('agama')) namaKategori = 'Keagamaan';
           content.push({ text: namaKategori, fontSize: 11, bold: true, margin: [0, 8, 0, 4] }); 
-          content.push({ text: 'Beri tanda silang (X) atau centang (√) pada kolom yang paling sesuai dengan diri Anda.', fontSize: 9, italics: true, color: '#4b5e52', margin: [0, 0, 0, 6] });
-          const tableBody = [ [ { text: 'Pernyataan', bold: true, fontSize: 10, fillColor: '#e6f2eb', margin: [4, 4, 4, 4] }, ...g.opsi.map(o => ({ text: o, bold: true, fontSize: 10, alignment: 'center', fillColor: '#e6f2eb', margin: [4, 4, 4, 4] })) ] ];
+          content.push({ text: 'Beri tanda centang (√) pada kolom yang paling sesuai.', fontSize: 9, italics: true, color: '#4b5e52', margin: [0, 0, 0, 4] });
+          
+          // Menyematkan legenda keterangan khusus dokumen PDF
+          const hasSingkatan = g.opsi.some(o => ['PB', 'MB', 'BSB', 'SB', 'BSH'].includes(o));
+          if (hasSingkatan) {
+            content.push({ text: 'Keterangan: PB (Perlu Bimbingan), MB (Mulai Berkembang), BSB (Berkembang Sangat Baik), SB (Sangat Baik)', fontSize: 8, bold: true, color: '#4a7c59', margin: [0, 0, 0, 8] });
+          } else { content.push({ text: '', margin: [0, 0, 0, 2] });
+          } const tableBody = [ [ { text: 'Pernyataan', bold: true, fontSize: 10, fillColor: '#e6f2eb', margin: [4, 4, 4, 4] }, ...g.opsi.map(o => ({ text: o, bold: true, fontSize: 10, alignment: 'center', fillColor: '#e6f2eb', margin: [4, 4, 4, 4] })) ] ];
           g.questions.forEach(q => { tableBody.push([ { text: q.pertanyaan, fontSize: 10, margin: [4, 4, 4, 4] }, ...g.opsi.map(() => ({ text: '', alignment: 'center', margin: [4, 4, 4, 4] })) ]); });
           content.push({ table: { headerRows: 1, dontBreakRows: true, widths: ['*', ...g.opsi.map(() => 'auto')], body: tableBody }, layout: { hLineWidth: (i, node) => (i === 0 || i === node.table.body.length) ? 1 : 0.5, vLineWidth: () => 0.5, hLineColor: () => '#bdd4c4', vLineColor: () => '#bdd4c4' }, margin: [0, 0, 0, 16] });
         } else if (g.isStimulusGroup) {
