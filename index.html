@@ -662,7 +662,7 @@ const UI = {
         // Deteksi cerdas penggunaan opsi singkatan
     const hasSingkatan = opsi.some(o => ['PB', 'MB', 'BSH', 'SB'].includes(o));
     const legendHtml = hasSingkatan 
-      ? `<div style="font-size:11.5px;color:var(--ink-500);margin-bottom:12px;padding:8px 12px;background:var(--ink-50);border-radius:var(--radius-sm);display:inline-block;border:1px solid var(--ink-100);"><strong>Keterangan:</strong> PB (Perlu Bimbingan) &nbsp;|&nbsp; MB (Mulai Berkembang) &nbsp;|&nbsp; BSB (Berkembang Sangat Baik) &nbsp;|&nbsp; SB (Sangat Baik)</div>` 
+      ? `<div style="font-size:11.5px;color:var(--ink-500);margin-bottom:12px;padding:8px 12px;background:var(--ink-50);border-radius:var(--radius-sm);display:inline-block;border:1px solid var(--ink-100);"><strong>Keterangan:</strong> PB (Perlu Bimbingan) &nbsp;|&nbsp; MB (Mulai Berkembang) &nbsp;|&nbsp; BSH (Berkembang Sesuai Harapan) &nbsp;|&nbsp; SB (Sangat Baik)</div>` 
       : '';
     let h = `<div class="soal-block with-stimulus"><div class="q-label" style="font-size:13px;text-transform:none;letter-spacing:0;font-weight:700;color:var(--green-700);">${group.subModul}</div><p style="font-size:12.5px;color:var(--ink-500);margin-bottom:8px;">Pilih salah satu jawaban yang paling mencerminkan kondisi peserta didik.</p>${legendHtml}<div class="likert-wrap"><table class="likert-table"><thead><tr><th>No</th><th>Pernyataan</th>${opsi.map(o => `<th>${o}</th>`).join('')}</tr></thead><tbody>`;
 
@@ -1626,9 +1626,9 @@ async generateSoalPDF(kelas, modul) {
         if (g.isGroup && g.subModul) {
           let namaKategori = g.subModul || modul; if (namaKategori.toLowerCase().includes('agama')) namaKategori = 'Keagamaan';
           content.push({ text: namaKategori, fontSize: 11, bold: true, margin: [0, 8, 0, 4] }); 
-          content.push({ text: 'Beri tanda silang (X) atau centang (√) pada kolom yang paling sesuai.', fontSize: 9, italics: true, color: '#4b5e52', margin: [0, 0, 0, 4] });
+          content.push({ text: 'Beri tanda atau centang (√) pada kolom yang paling sesuai.', fontSize: 9, italics: true, color: '#4b5e52', margin: [0, 0, 0, 4] });
           
-          const hasSingkatan = g.opsi.some(o => ['PB', 'MB', 'BSB', 'BSH', 'SB'].includes(o));
+          const hasSingkatan = g.opsi.some(o => ['PB', 'MB', 'BSH', 'SB'].includes(o));
           if (hasSingkatan) {
             content.push({ text: 'Keterangan: PB (Perlu Bimbingan), MB (Mulai Berkembang), BSH (Berkembang Sesuai Harapan), SB (Sangat Baik)', fontSize: 8, bold: true, color: '#4a7c59', margin: [0, 0, 0, 8] });
           } else {
