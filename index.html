@@ -881,9 +881,9 @@ const Siswa = {
     const soal = await API.call('getSoalSiswa', { kelas: STATE.user.kelas, modul });
     if (!soal || soal.length === 0) { UI.toast('Soal belum tersedia.', 'warning'); Router.go('beranda'); return; }
 
-    const isNonKognitif = ['Gaya Belajar', 'Minat', 'Bakat', '7 Kebiasaan', 'Agama', 'Faktor Eksternal'].includes(modul);
+    const isTableFormat = ['Gaya Belajar', 'Minat', 'Bakat', '7 Kebiasaan', 'Agama', 'Faktor Eksternal', 'Literasi Dasar', 'Numerasi Dasar'].includes(modul);
 
-    if (isNonKognitif) {
+    if (isTableFormat) {
       const groups = [];
       let indexTabel = 1;
       
@@ -896,8 +896,8 @@ const Siswa = {
       
       Object.keys(dimensiMap).forEach(d => {
         const questionsInDim = dimensiMap[d];
-        for (let i = 0; i < questionsInDim.length; i += 3) {
-          const chunk = questionsInDim.slice(i, i + 3);
+        for (let i = 0; i < questionsInDim.length; i += 5) {
+          const chunk = questionsInDim.slice(i, i + 5);
           groups.push({
             isGroup: true,
             subModul: `Pernyataan Bagian ${indexTabel++} (Dimensi ${d})`,
@@ -932,7 +932,7 @@ const Siswa = {
       }, { confirmLabel: 'Lanjutkan' });
     } else { this._renderUjianLayout(modul); }
   },
-_renderSoalAktif(scrollOnly = false) {
+  _renderSoalAktif(scrollOnly = false) {
     const u = STATE.ujian; const cur = u.flatSoal[u.idxFlat]; if (!cur) return; const mapInfo = u.soalGroupMap.get(cur.idSoal); if (!mapInfo) return;
     const group = u.soalAktif[mapInfo.gi]; const gKey = String(mapInfo.gi);
     if (gKey === u.currentGroupKey && scrollOnly) { document.getElementById(`soal-${cur.idSoal}`)?.scrollIntoView({ behavior:'smooth', block:'nearest' }); this._updatePalet(); return; }
@@ -965,14 +965,13 @@ _renderSoalAktif(scrollOnly = false) {
       });
     }
   },
-_updatePalet() {
+  _updatePalet() {
     const u = STATE.ujian;
     const el = document.getElementById('area-palet'); 
     if (el) el.innerHTML = UI.palette(u.flatSoal, u.idxFlat, u.jawaban, u.ragu, 'Siswa.goToSoal');
     
     const sisaKosong = UI.updateUnansweredWarning(u.flatSoal, u.jawaban);
 
-    // Logika pengubahan tombol Akhiri Ujian
     const btnNext = document.getElementById('btn-next-nav');
     if (btnNext) {
       const cur = u.flatSoal[u.idxFlat];
@@ -982,18 +981,15 @@ _updatePalet() {
         
         if (isLast) {
           if (sisaKosong === 0) {
-            // Berada di bagian akhir dan semua soal telah terisi
             btnNext.textContent = 'Akhiri Ujian';
             btnNext.className = 'btn btn-danger';
             btnNext.onclick = () => Siswa.submitUjian();
           } else {
-            // Berada di bagian akhir namun masih ada soal terlewat
             btnNext.textContent = `Akhiri Ujian (${sisaKosong} belum dijawab)`;
             btnNext.className = 'btn btn-primary'; 
             btnNext.onclick = () => Siswa.submitUjian();
           }
         } else {
-          // Bukan di bagian akhir, tombol bertindak sebagai navigasi normal
           btnNext.textContent = 'Selanjutnya →';
           btnNext.className = 'btn btn-primary';
           btnNext.onclick = () => Siswa.navigasiGroup(1);
@@ -1261,8 +1257,8 @@ const Guru = {
     const res = await API.call('submitKoreksi', { dataKoreksi: [{ barisData: STATE.koreksi.aktif.barisData, totalNilai: total, idSiswa: STATE.koreksi.aktif.idSiswa, modul: STATE.koreksi.aktif.modul }] });
     if (res) { 
       UI.toast('Penilaian berhasil disimpan.', 'success'); 
-      STATE.cache.koreksi = null; // Hapus cache koreksi agar memuat ulang antrean terbaru
-      STATE.cache.raporKelas = null; // Pastikan rapor juga direset cachenya
+      STATE.cache.koreksi = null;
+      STATE.cache.raporKelas = null;
       Router.go('koreksi'); 
     }
   },
@@ -1570,9 +1566,9 @@ const Admin = {
       const getBase64Image = async (url) => { try { const res = await fetch(url); if (!res.ok) return null; const blob = await res.blob(); if (!blob.type.startsWith('image/')) return null; return new Promise((resolve) => { const reader = new FileReader(); reader.onloadend = () => resolve(reader.result); reader.readAsDataURL(blob); }); } catch (e) { return null; } };
       
       let groupedSoal = [];
-      const isNonKognitif = ['Gaya Belajar', 'Minat', 'Bakat', '7 Kebiasaan', 'Agama', 'Faktor Eksternal'].includes(modul);
+      const isTableFormat = ['Gaya Belajar', 'Minat', 'Bakat', '7 Kebiasaan', 'Agama', 'Faktor Eksternal', 'Literasi Dasar', 'Numerasi Dasar'].includes(modul);
 
-      if (isNonKognitif) {
+      if (isTableFormat) {
         const groups = [];
         let indexTabel = 1;
         const dimensiMap = {};
@@ -1583,8 +1579,8 @@ const Admin = {
         });
         Object.keys(dimensiMap).forEach(d => {
           const questionsInDim = dimensiMap[d];
-          for (let i = 0; i < questionsInDim.length; i += 3) {
-            const chunk = questionsInDim.slice(i, i + 3);
+          for (let i = 0; i < questionsInDim.length; i += 5) {
+            const chunk = questionsInDim.slice(i, i + 5);
             groups.push({
               isGroup: true,
               subModul: `Pernyataan Bagian ${indexTabel++} (Dimensi ${d})`,
@@ -1615,7 +1611,8 @@ const Admin = {
       for (const g of groupedSoal) {
         if (g.isGroup && g.subModul) {
           let namaKategori = g.subModul || modul; if (namaKategori.toLowerCase().includes('agama')) namaKategori = 'Keagamaan';
-          content.push({ text: namaKategori, fontSize: 11, bold: true, margin: [0, 8, 0, 4] }); content.push({ text: 'Beri tanda centang (√) pada kolom yang paling sesuai dengan diri kamu!.', fontSize: 9, italics: true, color: '#4b5e52', margin: [0, 0, 0, 6] });
+          content.push({ text: namaKategori, fontSize: 11, bold: true, margin: [0, 8, 0, 4] }); 
+          content.push({ text: 'Beri tanda silang (X) atau centang (√) pada kolom yang paling sesuai dengan diri Anda.', fontSize: 9, italics: true, color: '#4b5e52', margin: [0, 0, 0, 6] });
           const tableBody = [ [ { text: 'Pernyataan', bold: true, fontSize: 10, fillColor: '#e6f2eb', margin: [4, 4, 4, 4] }, ...g.opsi.map(o => ({ text: o, bold: true, fontSize: 10, alignment: 'center', fillColor: '#e6f2eb', margin: [4, 4, 4, 4] })) ] ];
           g.questions.forEach(q => { tableBody.push([ { text: q.pertanyaan, fontSize: 10, margin: [4, 4, 4, 4] }, ...g.opsi.map(() => ({ text: '', alignment: 'center', margin: [4, 4, 4, 4] })) ]); });
           content.push({ table: { headerRows: 1, dontBreakRows: true, widths: ['*', ...g.opsi.map(() => 'auto')], body: tableBody }, layout: { hLineWidth: (i, node) => (i === 0 || i === node.table.body.length) ? 1 : 0.5, vLineWidth: () => 0.5, hLineColor: () => '#bdd4c4', vLineColor: () => '#bdd4c4' }, margin: [0, 0, 0, 16] });
