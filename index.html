@@ -660,7 +660,7 @@ const UI = {
    likertTable(group, stateUjian, nsPrefix) {
     const opsi = group.opsi || [];
         // Deteksi cerdas penggunaan opsi singkatan
-    const hasSingkatan = opsi.some(o => ['PB', 'MB', 'BSB', 'SB', 'BSH'].includes(o));
+    const hasSingkatan = opsi.some(o => ['PB', 'MB', 'BSH', 'SB'].includes(o));
     const legendHtml = hasSingkatan 
       ? `<div style="font-size:11.5px;color:var(--ink-500);margin-bottom:12px;padding:8px 12px;background:var(--ink-50);border-radius:var(--radius-sm);display:inline-block;border:1px solid var(--ink-100);"><strong>Keterangan:</strong> PB (Perlu Bimbingan) &nbsp;|&nbsp; MB (Mulai Berkembang) &nbsp;|&nbsp; BSB (Berkembang Sangat Baik) &nbsp;|&nbsp; SB (Sangat Baik)</div>` 
       : '';
@@ -1641,7 +1641,7 @@ const Admin = {
           content.push({ text: 'Beri tanda centang (√) pada kolom yang paling sesuai.', fontSize: 9, italics: true, color: '#4b5e52', margin: [0, 0, 0, 4] });
           
           // Menyematkan legenda keterangan khusus dokumen PDF
-          const hasSingkatan = g.opsi.some(o => ['PB', 'MB', 'BSB', 'SB', 'BSH'].includes(o));
+          const hasSingkatan = g.opsi.some(o => ['PB', 'MB', 'BSH', 'SB'].includes(o));
           if (hasSingkatan) {
             content.push({ text: 'Keterangan: PB (Perlu Bimbingan), MB (Mulai Berkembang), BSB (Berkembang Sangat Baik), SB (Sangat Baik)', fontSize: 8, bold: true, color: '#4a7c59', margin: [0, 0, 0, 8] });
           } else { content.push({ text: '', margin: [0, 0, 0, 2] });
