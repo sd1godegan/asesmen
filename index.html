@@ -1038,34 +1038,6 @@ const Siswa = {
     if (STATE.ujian.timer) { clearInterval(STATE.ujian.timer); STATE.ujian._timerPaused = true; }
     const ctr = document.getElementById('lock-violation-count'); if (overlay) overlay.classList.add('show'); if (ctr) { ctr.style.display = 'block'; ctr.textContent = `Pelanggaran ke-${STATE.ujian.violations}`; }
   },
-   submitTokenUjian() {
-    const inp = document.getElementById('lock-token-input');
-    const err = document.getElementById('lock-token-error');
-    const btn = document.getElementById('lock-token-btn');
-    const token = inp.value.trim();
-
-    if (!token) {
-      err.textContent = 'Token tidak boleh kosong.';
-      err.classList.add('show');
-      return;
-    }
-
-    btn.disabled = true;
-    btn.textContent = 'Memeriksa...';
-    err.classList.remove('show');
-
-    // Mengambil token valid dari sheet Konfigurasi (pastikan kunci Token_Pengawas ada di sheet Anda)
-    const validToken = STATE.config['Token_Pengawas'];
-
-    if (token === validToken) {
-      this.unlockUjian();
-    } else {
-      err.textContent = 'Token pengawas tidak valid!';
-      err.classList.add('show');
-      btn.disabled = false;
-      btn.textContent = 'Verifikasi & Lanjutkan';
-    }
-  },
   unlockUjian() {
     const overlay = document.getElementById('exam-lock-overlay'); if (overlay) overlay.classList.remove('show');
     const inp = document.getElementById('lock-token-input'); const err = document.getElementById('lock-token-error'); const btn = document.getElementById('lock-token-btn');
