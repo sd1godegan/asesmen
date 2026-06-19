@@ -1513,7 +1513,11 @@ const Admin = {
       <div class="page-header"><h1>Hasil Analisis</h1><p>Rekap asesmen diagnostik seluruh siswa sekolah.</p></div>
       <div class="toolbar">
         <div class="toolbar-left"><input type="text" id="cari-sekolah" class="search-input" placeholder="Cari nama atau kelas..." oninput="Admin.filterRaporSekolah()"></div>
-        <div class="toolbar-right"><button class="btn btn-ghost btn-sm" onclick="STATE.cache.raporSekolah=null; Admin.raporSekolah();">↻ Segarkan</button></div>
+        <div class="toolbar-right">
+          <button class="btn btn-secondary btn-sm" onclick="Admin.unduhRaporPDFForm()">🖨️ Cetak PDF</button>
+          <button class="btn btn-secondary btn-sm" onclick="Admin.unduhRaporKelasForm()">📥 Unduh Excel</button>
+          <button class="btn btn-ghost btn-sm" onclick="STATE.cache.raporSekolah=null; Admin.raporSekolah();">↻ Segarkan</button>
+        </div>
       </div>
       <div id="tabel-container"></div>
     `;
@@ -1534,6 +1538,153 @@ const Admin = {
     const rows = pageData.map(r => [ `<div class="td-name"><strong>${r.Nama_Siswa}</strong></div>`, r.Kelas, `${r.Skor_Literasi||'–'} &nbsp;${UI.badge(r.Kategori_Literasi||'','auto')}`, `${r.Skor_Numerasi||'–'} &nbsp;${UI.badge(r.Kategori_Numerasi||'','auto')}`, r.Gaya_Belajar_Dominan ? r.Gaya_Belajar_Dominan.split('|')[0] : '–', r.Faktor_Eksternal ? r.Faktor_Eksternal.split('|')[0] : '–' ]);
     
     document.getElementById('tabel-container').innerHTML = UI.table(['Nama','Kelas','Literasi','Numerasi','Gaya Belajar','Faktor Eksternal'], rows) + UI.pagination(STATE.view.page, total, limit, 'Admin.renderTabelRaporSekolah');
+  },
+  unduhRaporKelasForm() {
+    API.call('getDaftarKelas').then(kelasList => {
+      const kls = ['Semua Kelas', ...(kelasList || [])];
+      UI.prompt('Unduh Rekap Rapor (Excel)', [
+        { label: 'Pilih Kelas', type: 'select', options: kls }
+      ], vals => {
+        this.prosesUnduhRapor(vals[0]);
+      });
+    });
+  },
+  async prosesUnduhRapor(kelasTarget) {
+    let data = STATE.cache.raporSekolah;
+    if (!data) {
+      const main = document.getElementById('main-panel');
+      const originalHTML = main.innerHTML;
+      main.innerHTML = UI.loaderHTML('Menarik data dari peladen...');
+      const res = await API.call('getRaporKelas', { page: 1, limit: 5000 });
+      if (res) data = res.data || [];
+      main.innerHTML = originalHTML;
+    }
+    if (!data || data.length === 0) {
+      UI.toast('Tidak ada data rapor tersedia.', 'warning'); 
+      return;
+    }
+    if (kelasTarget !== 'Semua Kelas') {
+      data = data.filter(r => r.Kelas === kelasTarget);
+    }
+    if (data.length === 0) {
+      UI.toast(`Tidak ada rekam jejak penyelesaian untuk ${kelasTarget}.`, 'warning'); 
+      return;
+    }
+    const mapKolom = data.map((r, i) => ({
+      'No': i + 1,
+      'Nama Siswa': r.Nama_Siswa || '-',
+      'Kelas': r.Kelas || '-',
+      'Skor Literasi': r.Skor_Literasi || '',
+      'Kategori Literasi': r.Kategori_Literasi || '',
+      'Deskripsi Literasi': r.Deskripsi_Literasi || '',
+      'Skor Numerasi': r.Skor_Numerasi || '',
+      'Kategori Numerasi': r.Kategori_Numerasi || '',
+      'Deskripsi Numerasi': r.Deskripsi_Numerasi || '',
+      'Gaya Belajar': r.Gaya_Belajar_Dominan ? r.Gaya_Belajar_Dominan.replace(/\|/g, ' — ') : '',
+      'Minat': r.Minat_Dominan ? r.Minat_Dominan.replace(/\|/g, ' — ') : '',
+      'Bakat': r.Bakat_Dominan ? r.Bakat_Dominan.replace(/\|/g, ' — ') : '',
+      '7 Kebiasaan': r.Karakter_7_Kebiasaan ? r.Karakter_7_Kebiasaan.replace(/\|/g, ' — ') : '',
+      'Pembiasaan Agama': r.Pembiasaan_Agama ? r.Pembiasaan_Agama.replace(/\|/g, ' — ') : '',
+      'Faktor Eksternal': r.Faktor_Eksternal ? r.Faktor_Eksternal.replace(/\|/g, ' — ') : ''
+    }));
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(mapKolom);
+    ws['!cols'] = [ {wch: 5}, {wch: 25}, {wch: 10}, {wch: 12}, {wch: 18}, {wch: 50}, {wch: 12}, {wch: 18}, {wch: 50}, {wch: 35}, {wch: 35}, {wch: 35}, {wch: 35}, {wch: 35}, {wch: 35} ];
+    XLSX.utils.book_append_sheet(wb, ws, "Rekap Rapor");
+    XLSX.writeFile(wb, `Rekap_Asesmen_${kelasTarget.replace(/\s+/g, '_')}.xlsx`);
+    UI.toast(`Berkas rapor ${kelasTarget} berhasil diunduh.`, 'success');
+  },
+  unduhRaporPDFForm() {
+    API.call('getDaftarKelas').then(kelasList => {
+      const kls = ['Semua Kelas', ...(kelasList || [])];
+      UI.prompt('Cetak Rapor Kelas (PDF)', [
+        { label: 'Pilih Kelas', type: 'select', options: kls }
+      ], vals => {
+        this.prosesUnduhRaporPDF(vals[0]);
+      });
+    });
+  },
+  async prosesUnduhRaporPDF(kelasTarget) {
+    let data = STATE.cache.raporSekolah;
+    if (!data) {
+      const main = document.getElementById('main-panel');
+      const originalHTML = main.innerHTML;
+      main.innerHTML = UI.loaderHTML('Menarik data dari peladen...');
+      const res = await API.call('getRaporKelas', { page: 1, limit: 5000 });
+      if (res) data = res.data || [];
+      main.innerHTML = originalHTML;
+    }
+    if (!data || data.length === 0) {
+      UI.toast('Tidak ada data rapor tersedia.', 'warning'); 
+      return;
+    }
+    let filteredData = data;
+    if (kelasTarget !== 'Semua Kelas') {
+      filteredData = data.filter(r => r.Kelas === kelasTarget);
+    }
+    if (filteredData.length === 0) {
+      UI.toast(`Tidak ada rekam jejak untuk ${kelasTarget}.`, 'warning'); 
+      return;
+    }
+    UI.toast('Sedang merakit dokumen PDF...', 'neutral');
+    const thn = STATE.config['Tahun_Ajaran_Aktif'] || '-'; 
+    const KEBIASAAN_LIST = ['Bangun Pagi','Beribadah','Berolahraga','Makan Sehat & Bergizi','Gemar Belajar','Bermasyarakat','Tidur Cepat'];
+    const content = [];
+    const parse = (t, namaSiswa) => {
+      if (!t) return '-';
+      const p = t.split('|');
+      if (p[1]) return `${p[0]}\nAnanda ${namaSiswa} ${p[1].charAt(0).toLowerCase() + p[1].slice(1)}`;
+      return p[0];
+    };
+    filteredData.forEach((d, index) => {
+      const nkogData = [
+        ['Gaya Belajar Dominan', d.Gaya_Belajar_Dominan],
+        ['Minat Utama', d.Minat_Dominan],
+        ['Kecenderungan Bakat', d.Bakat_Dominan],
+        ['Pembiasaan Agama', d.Pembiasaan_Agama],
+        ['Faktor Eksternal', d.Faktor_Eksternal]
+      ].filter(item => item[1]);
+      const nkogRows = nkogData.map(item => [
+        { text: item[0], bold: true, fontSize: 10, color: '#2d4d38', margin: [0, 4, 0, 4] },
+        { text: parse(item[1], d.Nama_Siswa), fontSize: 10, margin: [0, 4, 0, 4], alignment: 'justify', lineHeight: 1.3 }
+      ]);
+      const kbDominans = (d.Karakter_7_Kebiasaan||'').split('|')[0].split(' & ').map(s => s.trim());
+      const titleLit = d.Kelas === 'Siswa Baru' ? 'LITERASI DASAR' : 'LITERASI';
+      const titleNum = d.Kelas === 'Siswa Baru' ? 'NUMERASI DASAR' : 'NUMERASI';
+      const studentPage = [
+        { text: 'RAPOR ASESMEN DIAGNOSTIK', style:'header', alignment:'center' },
+        { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 505, y2: 0, lineWidth: 1, lineColor: '#2d4d38' }], margin: [0, 8, 0, 8] },
+        { text: `SD Negeri 1 Godegan · Tahun Ajaran ${thn}`, alignment:'center', fontSize:10, color:'#666', margin:[0,0,0,24] },
+        { table:{ widths:[100,8,'*'], body:[ [{text:'Nama Siswa',bold:true},':',(d.Nama_Siswa||'-')], [{text:'Kelas', bold:true},':',(d.Kelas||'-')] ]}, layout:'noBorders', margin:[0,0,0,24] },
+        { text:`A.  ASESMEN ${titleLit}`, style:'subheader' },
+        { text:`Skor: ${d.Skor_Literasi||'-'}  |  Kategori: ${d.Kategori_Literasi||'-'}`, bold:true, margin:[15,4,0,6], fontSize:11, color: '#2d4d38' },
+        { text: d.Deskripsi_Literasi ? `Ananda ${d.Nama_Siswa} ${d.Deskripsi_Literasi.charAt(0).toLowerCase()+d.Deskripsi_Literasi.slice(1)}` : '-', margin:[15,0,0,16], fontSize:10, alignment: 'justify', lineHeight: 1.3 },
+        { text:`B.  ASESMEN ${titleNum}`, style:'subheader' },
+        { text:`Skor: ${d.Skor_Numerasi||'-'}  |  Kategori: ${d.Kategori_Numerasi||'-'}`, bold:true, margin:[15,4,0,6], fontSize:11, color: '#2d4d38' },
+        { text: d.Deskripsi_Numerasi ? `Ananda ${d.Nama_Siswa} ${d.Deskripsi_Numerasi.charAt(0).toLowerCase()+d.Deskripsi_Numerasi.slice(1)}` : '-', margin:[15,0,0,16], fontSize:10, alignment: 'justify', lineHeight: 1.3 },
+        { text:'C.  PROFIL NONKOGNITIF', style:'subheader', margin:[0,8,0,8] }
+      ];
+      if (nkogRows.length > 0) {
+        studentPage.push({ table: { widths: [120, '*'], body: nkogRows }, layout: 'lightHorizontalLines', margin: [15, 0, 0, 16] });
+      } else {
+        studentPage.push({ text: 'Data tidak tersedia', margin: [15, 0, 0, 16], fontSize: 10, italics: true, color: '#8ea396' });
+      }
+      studentPage.push({ text:'D.  7 KEBIASAAN', style:'subheader' });
+      studentPage.push({ text:`Kebiasaan Dominan: ${kbDominans.join(', ')}`, bold:true, margin:[15,6,0,8], fontSize:10 });
+      const kebiasaanTable = { table: { widths: ['*', 70], body: [ [{text:'Daftar Kebiasaan', bold:true, fontSize:10, fillColor: '#f3f9f5'}, {text:'Status', bold:true, fontSize:10, alignment:'center', fillColor: '#f3f9f5'}], ...KEBIASAAN_LIST.map(k => { const isDom = kbDominans.some(d2 => d2.toLowerCase().includes(k.toLowerCase()) || k.toLowerCase().includes(d2.toLowerCase())); return [{ text:k, fontSize:10, margin: [0, 2, 0, 2] }, { text: isDom ? '√ Dominan' : '–', fontSize:10, alignment:'center', color: isDom ? '#2d4d38' : '#8ea396', margin: [0, 2, 0, 2] }]; }) ] }, layout:{ hLineWidth: () => 0.5, vLineWidth: () => 0, hLineColor: () => '#dce7e0' }, margin:[15,0,0,0] };
+      if (index < filteredData.length - 1) {
+        kebiasaanTable.pageBreak = 'after';
+      }
+      studentPage.push(kebiasaanTable);
+      content.push(...studentPage);
+    });
+    pdfMake.createPdf({
+      pageSize: 'A4', pageMargins: [45, 50, 45, 50],
+      content: content,
+      styles: { header: { fontSize:16, bold:true, letterSpacing: 1 }, subheader: { fontSize:12, bold:true, marginTop:10, marginBottom:4, color: '#1a2e22' } }
+    }).download(`Kumpulan_Rapor_${kelasTarget.replace(/\s+/g, '_')}.pdf`, () => {
+      UI.toast('Berkas PDF berhasil diunduh.', 'success');
+    });
   },
   async konfigurasi() {
     const main = document.getElementById('main-panel'); main.innerHTML = UI.loaderHTML(); const conf = await API.call('getKonfigurasi'); if (!conf) return;
