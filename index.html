@@ -1799,7 +1799,7 @@ async generateSoalPDF(kelas, modul) {
           if (judul) { stimulusBox.push({ text: judul, bold: true, fontSize: 12, alignment: 'center', margin: [0, 0, 0, 4] }); }
           
           if (g.gambar) {
-            const absoluteUrl = `https://karya-pakriski.github.io/am26/img/${g.gambar.replace(/^(img\/|\/)/i, '')}`; const base64 = await getBase64Image(absoluteUrl);
+            const absoluteUrl = `https://sd1godegan.github.io/asesmen/img/${g.gambar.replace(/^(img\/|\/)/i, '')}`; const base64 = await getBase64Image(absoluteUrl);
             if (base64) { stimulusBox.push({ image: base64, fit: [250, 180], alignment: 'center', margin: [0, 0, 0, 8] }); } else { stimulusBox.push({ text: '[Ilustrasi Gambar Gagal Dimuat]', color: '#d9534f', italics: true, alignment: 'center', margin: [0, 0, 0, 8] }); }
           }
           
