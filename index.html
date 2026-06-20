@@ -1805,10 +1805,9 @@ async generateSoalPDF(kelas, modul) {
           
           if (isi) { stimulusBox.push({ text: isi, fontSize: 11, lineHeight: 1.35, margin: [0, 0, 0, 0], alignment: 'justify' }); }
           
-          if (stimulusBox.length > 0) { 
-            // Kotak stimulus masuk tanpa sisipan teks instruksi nomor di atasnya
-            content.push({ unbreakable: true, stack: [ { table: { widths: ['*'], body: [[ { stack: stimulusBox, fillColor: '#f5f8f6', border: [false, false, false, false], margin: [10, 10, 10, 10] } ]] }, layout: { defaultBorder: false, vLineColor: () => '#82b895', vLineWidth: (i) => i === 0 ? 3 : 0, paddingLeft: () => 0, paddingRight: () => 0 } } ], margin: [0, 0, 0, 10] }); 
-          }
+         if (stimulusBox.length > 0) { 
+          content.push({ unbreakable: true, stack: stimulusBox, margin: [0, 0, 0, 12] }); 
+        }
           
           g.questions.forEach(q => appendQuestionToPDF(content, q));
         } else { appendQuestionToPDF(content, g); }
