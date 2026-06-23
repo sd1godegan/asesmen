@@ -1566,7 +1566,7 @@ const Admin = {
             
             if (g.gambar && g.gambar.trim() !== '' && g.gambar.trim() !== '-') {
               const absoluteUrl = `https://sd1godegan.github.io/asesmen/img/${g.gambar.replace(/^(img\/|\/)/i, '')}`; const base64 = await getBase64Image(absoluteUrl);
-if (base64) { stimulusBox.push({ image: base64, fit: [113, 85], alignment: 'center', margin: [0, 0, 0, 8] }); } else { stimulusBox.push({ text: '[Ilustrasi Gambar Gagal Dimuat]', color: '#d9534f', italics: true, alignment: 'center', margin: [0, 0, 0, 8] }); }            }
+if (base64) { stimulusBox.push({ image: base64, fit: [151, 113], alignment: 'center', margin: [0, 0, 0, 8] }); } else { stimulusBox.push({ text: '[Ilustrasi Gambar Gagal Dimuat]', color: '#d9534f', italics: true, alignment: 'center', margin: [0, 0, 0, 8] }); }            }
             
             if (isi) { stimulusBox.push({ text: isi, fontSize: 11, lineHeight: 1.35, margin: [0, 0, 0, 0], alignment: 'justify' }); }
             
@@ -1934,7 +1934,7 @@ async generateSoalPDF(kelas, modul) {
           
          if (g.gambar && g.gambar.trim() !== '' && g.gambar.trim() !== '-') {
          const absoluteUrl = `https://sd1godegan.github.io/asesmen/img/${g.gambar.replace(/^(img\/|\/)/i, '')}`; const base64 = await getBase64Image(absoluteUrl);
-          if (base64) { stimulusBox.push({ image: base64, fit: [113, 85], alignment: 'center', margin: [0, 0, 0, 8] }); } else { stimulusBox.push({ text: '[Ilustrasi Gambar Gagal Dimuat]', color: '#d9534f', italics: true, alignment: 'center', margin: [0, 0, 0, 8] }); }
+          if (base64) { stimulusBox.push({ image: base64, fit: [151, 113], alignment: 'center', margin: [0, 0, 0, 8] }); } else { stimulusBox.push({ text: '[Ilustrasi Gambar Gagal Dimuat]', color: '#d9534f', italics: true, alignment: 'center', margin: [0, 0, 0, 8] }); }
           }
           
           if (isi) { stimulusBox.push({ text: isi, fontSize: 11, lineHeight: 1.35, margin: [0, 0, 0, 0], alignment: 'justify' }); }
