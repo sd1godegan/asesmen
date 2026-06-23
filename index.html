@@ -1826,8 +1826,8 @@ async generateSoalPDF(kelas, modul) {
           if (g.bacaan) { const baris = g.bacaan.split('\n'); const judulMatch = baris[0].match(/^JUDUL:\s*(.+)/i); if (judulMatch) { judul = judulMatch[1].trim(); isi = baris.slice(1).join('\n').trim(); } }
           if (judul) { stimulusBox.push({ text: judul, bold: true, fontSize: 12, alignment: 'center', margin: [0, 0, 0, 4] }); }
           
-          if (g.gambar) {
-            const absoluteUrl = `https://sd1godegan.github.io/asesmen/img/${g.gambar.replace(/^(img\/|\/)/i, '')}`; const base64 = await getBase64Image(absoluteUrl);
+         if (g.gambar && g.gambar.trim() !== '' && g.gambar.trim() !== '-') {
+         const absoluteUrl = `https://sd1godegan.github.io/asesmen/img/${g.gambar.replace(/^(img\/|\/)/i, '')}`; const base64 = await getBase64Image(absoluteUrl);
             if (base64) { stimulusBox.push({ image: base64, fit: [250, 180], alignment: 'center', margin: [0, 0, 0, 8] }); } else { stimulusBox.push({ text: '[Ilustrasi Gambar Gagal Dimuat]', color: '#d9534f', italics: true, alignment: 'center', margin: [0, 0, 0, 8] }); }
           }
           
