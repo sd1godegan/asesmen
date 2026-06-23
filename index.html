@@ -1217,6 +1217,20 @@ submitTokenUjian() {
 
 const Guru = {
   route(panel) { switch (panel) { case 'beranda': this.beranda(); break; case 'koreksi': this.koreksi(); break; case 'rapor-kelas': this.raporKelas(); break; default: Router.go('beranda'); } },
+  async segarkanDataServer(kategoriState, fungsiRender) {
+    const main = document.getElementById('main-panel');
+    const originalHTML = main.innerHTML;
+    main.innerHTML = UI.loaderHTML('Mereset memori server dan menarik data segar...');
+    const res = await API.call('refreshCache', {}, { silent: true });
+    if (res) { 
+      STATE.cache[kategoriState] = null; 
+      this[fungsiRender](); 
+      UI.toast('Sinkronisasi data dengan Spreadsheet berhasil.', 'success'); 
+    } else { 
+      main.innerHTML = originalHTML; 
+      UI.toast('Gagal menyinkronkan data server.', 'error'); 
+    }
+  },
   async beranda() {
     const main = document.getElementById('main-panel'); main.innerHTML = UI.loaderHTML(); const stats = await API.call('getStatistikGuru'); if (!stats) return;
     const partisipasi = stats.totalSiswa > 0 ? Math.round((stats.sudahDinilai / stats.totalSiswa) * 100) : 0;
@@ -1241,7 +1255,7 @@ const Guru = {
         <div class="toolbar-left"><input type="text" id="cari-koreksi" class="search-input" placeholder="Cari nama atau kelas..." oninput="Guru.filterKoreksi()"></div>
         <div class="toolbar-right">
           <span style="font-size:13px;color:var(--ink-300);" id="koreksi-count">${STATE.cache.koreksi.length} item antre</span>
-          <button class="btn btn-ghost btn-sm" onclick="STATE.cache.koreksi=null; Guru.koreksi();">↻ Segarkan</button>
+          <button class="btn btn-ghost btn-sm" onclick="Guru.segarkanDataServer('koreksi', 'koreksi')">↻ Sinkronkan Data</button>
         </div>
       </div>
       <div id="tabel-container"></div>
@@ -1300,7 +1314,7 @@ const Guru = {
       <div class="page-header"><h1>Rapor Kelas</h1><p>Data hasil asesmen diagnostik seluruh siswa di kelas Anda.</p></div>
       <div class="toolbar">
         <div class="toolbar-left"><input type="text" id="cari-rapor" class="search-input" placeholder="Cari nama siswa..." oninput="Guru.filterRaporKelas()"></div>
-        <div class="toolbar-right"><button class="btn btn-ghost btn-sm" onclick="STATE.cache.raporKelas=null; Guru.raporKelas();">↻ Segarkan</button></div>
+        <div class="toolbar-right"><button class="btn btn-ghost btn-sm" onclick="Guru.segarkanDataServer('raporKelas', 'raporKelas')">↻ Sinkronkan Data</button></div>
       </div>
       <div id="tabel-container"></div>
     `;
@@ -1326,6 +1340,20 @@ const Guru = {
 
 const Admin = {
   route(panel) { switch (panel) { case 'beranda': this.beranda(); break; case 'manajemen-user': this.manajemenUser(); break; case 'bank-soal': this.bankSoal(); break; case 'koreksi': Guru.koreksi(); break; case 'rapor-sekolah': this.raporSekolah(); break; case 'manajemen-progres': this.progres(); break; case 'konfigurasi': this.konfigurasi(); break; case 'cetak-kartu': this.cetakKartu(); break; default: Router.go('beranda'); } },
+  async segarkanDataServer(kategoriState, fungsiRender) {
+    const main = document.getElementById('main-panel');
+    const originalHTML = main.innerHTML;
+    main.innerHTML = UI.loaderHTML('Mereset memori server dan menarik data segar...');
+    const res = await API.call('refreshCache', {}, { silent: true });
+    if (res) { 
+      STATE.cache[kategoriState] = null; 
+      this[fungsiRender](); 
+      UI.toast('Sinkronisasi data dengan Spreadsheet berhasil.', 'success'); 
+    } else { 
+      main.innerHTML = originalHTML; 
+      UI.toast('Gagal menyinkronkan data server.', 'error'); 
+    }
+  },
   async beranda() {
     const main = document.getElementById('main-panel'); main.innerHTML = UI.loaderHTML(); const stats = await API.call('getStatistik'); if (!stats) return;
     const partisipasi = stats.totalSiswa > 0 ? Math.round((stats.sudahDinilai / stats.totalSiswa) * 100) : 0;
@@ -1350,7 +1378,7 @@ const Admin = {
         <div class="toolbar-left"><input type="text" id="cari-user" class="search-input" placeholder="Cari nama atau ID..." oninput="Admin.filterUser()"></div>
         <div class="toolbar-right">
           <input type="file" id="file-user" accept=".xlsx,.xls" class="file-input-hidden" onchange="Admin.uploadExcel()">
-          <button class="btn btn-ghost btn-sm" onclick="STATE.cache.users=null; Admin.manajemenUser();">↻ Segarkan</button>
+          <button class="btn btn-ghost btn-sm" onclick="Admin.segarkanDataServer('users', 'manajemenUser')">↻ Sinkronkan Data</button>
           <button class="btn btn-secondary btn-sm" onclick="Admin.downloadTemplate()">Unduh Template</button>
           <button class="btn btn-secondary btn-sm" onclick="document.getElementById('file-user').click()">Unggah Excel</button>
           <button class="btn btn-primary btn-sm" onclick="Admin.tambahForm()">+ Tambah</button>
@@ -1421,7 +1449,7 @@ const Admin = {
         <div class="toolbar-left"><input type="text" id="cari-soal" class="search-input" placeholder="Cari ID atau pertanyaan..." oninput="Admin.filterSoal()"></div>
         <div class="toolbar-right">
           <input type="file" id="file-soal" accept=".xlsx,.xls" class="file-input-hidden" onchange="Admin.uploadSoalExcel()">
-          <button class="btn btn-ghost btn-sm" onclick="STATE.cache.soal=null; Admin.bankSoal();">↻ Segarkan</button>
+          <button class="btn btn-ghost btn-sm" onclick="Admin.segarkanDataServer('soal', 'bankSoal')">↻ Sinkronkan Data</button>
           <button class="btn btn-secondary btn-sm" onclick="Admin.cetakSoalPDFForm()">🖨️ Cetak PDF</button>
           <button class="btn btn-secondary btn-sm" onclick="Admin.downloadTemplateSoal()">Template</button>
           <button class="btn btn-secondary btn-sm" onclick="document.getElementById('file-soal').click()">Unggah</button>
@@ -1479,7 +1507,7 @@ const Admin = {
       <div class="page-header"><h1>Kendali Progres</h1><p>Reset progres asesmen siswa jika diperlukan.</p></div>
       <div class="toolbar">
         <div class="toolbar-left"><input type="text" id="cari-progres" class="search-input" placeholder="Cari nama atau ID..." oninput="Admin.filterProgres()"></div>
-        <div class="toolbar-right"><button class="btn btn-ghost btn-sm" onclick="STATE.cache.progres=null; Admin.progres();">↻ Segarkan</button></div>
+        <div class="toolbar-right"><button class="btn btn-ghost btn-sm" onclick="Admin.segarkanDataServer('progres', 'progres')">↻ Sinkronkan Data</button></div>
       </div>
       <div id="tabel-container"></div>
     `;
@@ -1516,7 +1544,7 @@ const Admin = {
         <div class="toolbar-right">
           <button class="btn btn-secondary btn-sm" onclick="Admin.unduhRaporPDFForm()">🖨️ Cetak PDF</button>
           <button class="btn btn-secondary btn-sm" onclick="Admin.unduhRaporKelasForm()">📥 Unduh Excel</button>
-          <button class="btn btn-ghost btn-sm" onclick="STATE.cache.raporSekolah=null; Admin.raporSekolah();">↻ Segarkan</button>
+          <button class="btn btn-ghost btn-sm" onclick="Admin.segarkanDataServer('raporSekolah', 'raporSekolah')">↻ Sinkronkan Data</button>
         </div>
       </div>
       <div id="tabel-container"></div>
@@ -1554,7 +1582,7 @@ const Admin = {
     if (!data) {
       const main = document.getElementById('main-panel');
       const originalHTML = main.innerHTML;
-      main.innerHTML = UI.loaderHTML('Menarik data dari peladen...');
+      main.innerHTML = UI.loaderHTML('Menarik data dari server...');
       const res = await API.call('getRaporKelas', { page: 1, limit: 5000 });
       if (res) data = res.data || [];
       main.innerHTML = originalHTML;
@@ -1609,7 +1637,7 @@ const Admin = {
     if (!data) {
       const main = document.getElementById('main-panel');
       const originalHTML = main.innerHTML;
-      main.innerHTML = UI.loaderHTML('Menarik data dari peladen...');
+      main.innerHTML = UI.loaderHTML('Menarik data dari server...');
       const res = await API.call('getRaporKelas', { page: 1, limit: 5000 });
       if (res) data = res.data || [];
       main.innerHTML = originalHTML;
