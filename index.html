@@ -131,8 +131,8 @@ input[type="radio"],input[type="checkbox"] { width:16px; height:16px; accent-col
 .topbar-brand { font-size:14px; font-weight:700; color:var(--white); }
 .menu-btn { background:none; border:none; color:var(--white); cursor:pointer; padding:6px; border-radius:6px; display:flex; align-items:center; transition:background var(--transition); width:auto; }
 .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:190; }
-.main { flex:1; margin-left:var(--sidebar-w); min-height:100vh; display:flex; flex-direction:column; }
-.main-content { padding:32px 36px; flex:1; }
+.main { flex:1; min-width:0; margin-left:var(--sidebar-w); min-height:100vh; display:flex; flex-direction:column; }
+.main-content { padding:32px 36px; flex:1; min-width:0; max-width:100%; }
 /* COMPONENTS */
 .page-header { margin-bottom:28px; }
 .page-header h1 { font-size:22px; font-weight:700; color:var(--ink-900); letter-spacing:-.02em; }
@@ -157,7 +157,7 @@ input[type="radio"],input[type="checkbox"] { width:16px; height:16px; accent-col
 .stat-card.green { border-top:3px solid var(--green-400); }
 .stat-card.amber { border-top:3px solid var(--amber-400); }
 .stat-card.red { border-top:3px solid var(--red-500); }
-.table-wrap { overflow-x:auto; border-radius:var(--radius); border:1px solid var(--ink-100); }
+.table-wrap { overflow-x:auto; max-width:100%; border-radius:var(--radius); border:1px solid var(--ink-100); }
 table { width:100%; border-collapse:collapse; white-space:nowrap; }
 thead th { padding:11px 16px; background:var(--ink-50); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--ink-300); border-bottom:1px solid var(--ink-100); text-align:left; position:sticky; top:0; z-index:5; }
 tbody td { padding:12px 16px; border-bottom:1px solid var(--ink-100); font-size:13.5px; color:var(--ink-700); vertical-align:middle; }
@@ -797,7 +797,7 @@ const RaporPDF = {
       ...blok(`A.  ASESMEN ${judulLit}`, d.Skor_Literasi, d.Kategori_Literasi, d.Deskripsi_Literasi),
       ...blok(`B.  ASESMEN ${judulNum}`, d.Skor_Numerasi, d.Kategori_Numerasi, d.Deskripsi_Numerasi),
       { text: 'C.  PROFIL NONKOGNITIF', style: 'subheader', margin: [0, 8, 0, 8] },
-      nkog.length ? { table: { widths: [120, '*'], body: nkog }, layout: 'lightHorizontalLines', margin: [15, 0, 0, 16] } : { text: 'Data tidak tersedia', margin: [15, 0, 0, 16], fontSize: 10, italics: true, color: '#8ea396' },
+      nkog.length ? { table: { dontBreakRows: true, widths: [120, '*'], body: nkog }, layout: 'lightHorizontalLines', margin: [15, 0, 0, 16] } : { text: 'Data tidak tersedia', margin: [15, 0, 0, 16], fontSize: 10, italics: true, color: '#8ea396' },
       { text: 'D.  7 KEBIASAAN', style: 'subheader' },
       { text: `Kebiasaan Dominan: ${kbDom.join(', ') || '-'}`, bold: true, margin: [15, 6, 0, 8], fontSize: 10 },
       tabelKebiasaan
@@ -1119,6 +1119,16 @@ const LaporanKelas = {
   WARNA: { Mahir: '#2d4d38', Cakap: '#3b82f6', Dasar: '#d97706', 'Perlu Intervensi': '#dc2626' },
   _sibuk: false,
 
+  /** Label kenaikan kelas (hanya tampilan laporan): Siswa Baru -> Kelas 1, Kelas 1 -> Kelas 2, dst. */
+  naik(k) {
+    const t = String(k || '').trim();
+    if (t.toLowerCase() === 'siswa baru') return 'Kelas 1';
+    const m = t.match(/^(kelas\s*)(\d+)(.*)$/i);
+    if (!m) return t;
+    const n = parseInt(m[2], 10) + 1;
+    return n > 6 ? 'Lulus (Kelas 6)' : `Kelas ${n}${m[3]}`;
+  },
+
   async _data(sumber) {
     const key = sumber === 'guru' ? 'raporKelas' : 'raporSekolah';
     if (!STATE.cache[key]) {
@@ -1138,15 +1148,16 @@ const LaporanKelas = {
       UI.prompt('Unduh Laporan Nilai per Kelas', [
         { label: 'Kelas', type: 'select', options: kelasList.length > 1 ? ['Semua Kelas', ...kelasList] : kelasList },
         { label: 'Jenis Nilai', type: 'select', options: ['Literasi', 'Numerasi', 'Keduanya (2 berkas terpisah)'] },
-        { label: 'Format', type: 'select', options: ['PDF', 'Excel'] }
-      ], async ([kelas, jenis, format]) => {
+        { label: 'Format', type: 'select', options: ['PDF', 'Excel'] },
+        { label: 'Label Kelas pada Laporan', type: 'select', options: ['Sesuai saat asesmen', 'Naik kelas (Siswa Baru → Kelas 1, Kelas 1 → Kelas 2, dst.)'] }
+      ], async ([kelas, jenis, format, label]) => {
         const daftar = jenis.startsWith('Keduanya') ? ['Literasi', 'Numerasi'] : [jenis];
-        for (let i = 0; i < daftar.length; i++) { if (i) await sleep(800); this.proses(data, kelas, daftar[i], format); }
+        for (let i = 0; i < daftar.length; i++) { if (i) await sleep(800); this.proses(data, kelas, daftar[i], format, label.startsWith('Naik')); }
       });
     } finally { this._sibuk = false; }
   },
 
-  _susun(data, kelasTarget, jenis) {
+  _susun(data, kelasTarget, jenis, naik = false) {
     const kelasList = kelasTarget === 'Semua Kelas' ? [...new Set(data.map(r => r.Kelas).filter(Boolean))].sort() : [kelasTarget];
     return kelasList.map(k => {
       const baris = data.filter(r => r.Kelas === k)
@@ -1160,16 +1171,17 @@ const LaporanKelas = {
       const dist = Object.fromEntries(this.KATEGORI.map(c => [c, 0]));
       baris.forEach(b => { if (b.skor !== null && b.kategori in dist) dist[b.kategori]++; });
       return {
-        kelas: k, label: k === 'Siswa Baru' ? `${jenis} Dasar` : jenis, baris,
+        kelas: k, tampil: naik ? this.naik(k) : k, label: k === 'Siswa Baru' ? `${jenis} Dasar` : jenis, baris,
         stat: { total: baris.length, sudah: jml, belum: baris.length - jml, rata: jml ? Math.round(nilai.reduce((a, b) => a + b, 0) / jml * 10) / 10 : null, max: jml ? Math.max(...nilai) : null, min: jml ? Math.min(...nilai) : null, dist }
       };
     });
   },
 
-  proses(data, kelasTarget, jenis, format) {
-    const bagian = this._susun(data, kelasTarget, jenis);
+  proses(data, kelasTarget, jenis, format, naik = false) {
+    const bagian = this._susun(data, kelasTarget, jenis, naik).sort((a, b) => a.tampil.localeCompare(b.tampil, 'id', { numeric: true }));
     if (!bagian.length || bagian.every(b => b.stat.sudah === 0)) { UI.toast(`Belum ada nilai ${jenis} untuk ${kelasTarget}.`, 'warning'); return; }
-    const nama = `Laporan_${jenis}_${kelasTarget.replace(/\s+/g, '_')}`;
+    const tampilTarget = naik && kelasTarget !== 'Semua Kelas' ? this.naik(kelasTarget) : kelasTarget;
+    const nama = `Laporan_${jenis}_${tampilTarget.replace(/\s+/g, '_')}${naik ? '_NaikKelas' : ''}`;
     if (format === 'Excel') this._excel(bagian, nama); else this._pdf(bagian, nama);
   },
 
@@ -1178,7 +1190,7 @@ const LaporanKelas = {
     bagian.forEach(b => {
       const s = b.stat;
       const ws = XLSX.utils.aoa_to_sheet([
-        [`LAPORAN NILAI ${b.label.toUpperCase()} — ASESMEN DIAGNOSTIK`], ['SD Negeri 1 Godegan'], ['Kelas', b.kelas], ['Tahun Ajaran', thn], [],
+        [`LAPORAN NILAI ${b.label.toUpperCase()} — ASESMEN DIAGNOSTIK`], ['SD Negeri 1 Godegan'], ['Kelas', b.tampil], ...(b.tampil !== b.kelas ? [['Kelas saat asesmen', b.kelas]] : []), ['Tahun Ajaran', thn], [],
         ['No', 'Nama Siswa', `Skor ${b.label}`, 'Kategori', 'Deskripsi'],
         ...b.baris.map(r => [r.no, r.nama, r.skor ?? '', r.kategori, r.deskripsi]), [],
         ['RINGKASAN KELAS'], ['Jumlah siswa', s.total], ['Sudah mengerjakan', s.sudah], ['Belum mengerjakan', s.belum],
@@ -1186,7 +1198,7 @@ const LaporanKelas = {
         ...this.KATEGORI.map(c => [`Kategori ${c}`, s.dist[c]])
       ]);
       ws['!cols'] = [{ wch: 18 }, { wch: 30 }, { wch: 14 }, { wch: 18 }, { wch: 90 }];
-      const asal = b.kelas.replace(/[\\\/?*\[\]:]/g, '-').slice(0, 28) || 'Kelas';
+      const asal = b.tampil.replace(/[\\\/?*\[\]:]/g, '-').slice(0, 28) || 'Kelas';
       let nama = asal, n = 2;
       while (dipakai.has(nama.toLowerCase())) nama = `${asal}_${n++}`;
       dipakai.add(nama.toLowerCase());
@@ -1210,7 +1222,7 @@ const LaporanKelas = {
         { text: `LAPORAN NILAI ${b.label.toUpperCase()}`, style: 'header', alignment: 'center' },
         { text: 'ASESMEN DIAGNOSTIK — SD NEGERI 1 GODEGAN', alignment: 'center', fontSize: 10, color: '#4b5e52', margin: [0, 2, 0, 6] },
         { canvas: [{ type: 'line', x1: 0, y1: 0, x2: 762, y2: 0, lineWidth: 1, lineColor: '#2d4d38' }], margin: [0, 0, 0, 8] },
-        { table: { widths: [80, 8, '*'], body: [[{ text: 'Kelas', bold: true }, ':', b.kelas], [{ text: 'Tahun Ajaran', bold: true }, ':', thn]] }, layout: 'noBorders', fontSize: 10, margin: [0, 0, 0, 10] },
+        { table: { widths: [80, 8, '*'], body: [[{ text: 'Kelas', bold: true }, ':', b.tampil !== b.kelas ? `${b.tampil} (saat asesmen: ${b.kelas})` : b.kelas], [{ text: 'Tahun Ajaran', bold: true }, ':', thn]] }, layout: 'noBorders', fontSize: 10, margin: [0, 0, 0, 10] },
         { table: { widths: Array(9).fill('*'), body: [
             [th('Jumlah Siswa'), th('Sudah Mengerjakan'), th('Rata-rata'), th('Tertinggi'), th('Terendah'), ...this.KATEGORI.map(th)],
             [td(s.total), td(s.sudah), td(v(s.rata)), td(v(s.max)), td(v(s.min)), ...this.KATEGORI.map(c => td(s.dist[c]))]] },
@@ -1224,7 +1236,7 @@ const LaporanKelas = {
         { text: r.kategori || '–', fontSize: 9.5, bold: true, alignment: 'center', color: this.WARNA[r.kategori] || '#8ea396', margin: [0, 3, 0, 3] },
         { text: r.deskripsi || (r.skor === null ? 'Belum mengerjakan.' : '–'), fontSize: 9, alignment: 'justify', lineHeight: 1.25, margin: [2, 3, 2, 3], color: r.deskripsi ? '#0f1a13' : '#8ea396' }
       ]);
-      content.push({ table: { headerRows: 1, widths: [25, 150, 55, 80, '*'], body: [head, ...body] }, layout: garis('#dce7e0') });
+      content.push({ table: { headerRows: 1, keepWithHeaderRows: 1, dontBreakRows: true, widths: [25, 150, 55, 80, '*'], body: [head, ...body] }, layout: garis('#dce7e0') });
     });
     pdfMake.createPdf({
       pageSize: 'A4', pageOrientation: 'landscape', pageMargins: [40, 40, 40, 45], content,
@@ -1364,7 +1376,7 @@ const SoalPDF = {
       : { text: '', margin: [0, 0, 0, 2] });
     const head = [{ text: 'Pernyataan', bold: true, fontSize: 10, fillColor: '#e6f2eb', margin: [4, 4, 4, 4] }, ...opsi.map(o => ({ text: o, bold: true, fontSize: 10, alignment: 'center', fillColor: '#e6f2eb', margin: [4, 4, 4, 4] }))];
     const body = soal.map(q => [{ text: q.pertanyaan, fontSize: 10, margin: [4, 4, 4, 4] }, ...opsi.map(() => ({ text: '', alignment: 'center', margin: [4, 4, 4, 4] }))]);
-    out.push({ table: { headerRows: 1, widths: ['*', ...opsi.map(() => 'auto')], body: [head, ...body] }, layout: { hLineWidth: (i, n) => (i === 0 || i === n.table.body.length) ? 1 : 0.5, vLineWidth: () => 0.5, hLineColor: () => '#bdd4c4', vLineColor: () => '#bdd4c4' }, margin: [0, 0, 0, 16] });
+    out.push({ table: { headerRows: 1, keepWithHeaderRows: 1, dontBreakRows: true, widths: ['*', ...opsi.map(() => 'auto')], body: [head, ...body] }, layout: { hLineWidth: (i, n) => (i === 0 || i === n.table.body.length) ? 1 : 0.5, vLineWidth: () => 0.5, hLineColor: () => '#bdd4c4', vLineColor: () => '#bdd4c4' }, margin: [0, 0, 0, 16] });
     return out;
   },
   /** Seluruh isi lembar soal satu modul (header + butir). */
